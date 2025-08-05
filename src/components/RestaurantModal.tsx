@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { X, User, MapPin, Search } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
-import React from 'react';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 
 /* ------------------------------------------------------------------ */
 /* Tipos                                                               */
@@ -28,7 +28,7 @@ interface CepData {
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  /** agora devolve uma Promise para o modal poder await/capturar erros */
+  /** devolve Promise para o modal await/capturar erros */
   onSubmit: (data: RestaurantFormData) => Promise<any>;
   isLoading: boolean;
 }
@@ -58,6 +58,7 @@ export function RestaurantModal({
     handleSubmit,
     formState: { errors },
     setValue,
+    setError,
     reset,
     watch,
     clearErrors,
@@ -115,33 +116,41 @@ export function RestaurantModal({
     }
   }, [cepValue, setValue]);
 
+  /* ------------------------------------------------------------------ */
+  /* Submit                                                             */
+  /* ------------------------------------------------------------------ */
   const handleFormSubmit = async (data: RestaurantFormData) => {
-    // sempre resetamos antes
     setEmailError('');
     clearErrors('emailOwner');
-  
+
     try {
-      await onSubmit(data);               // ← se sucesso, pai fecha modal
+      await onSubmit(data); // sucesso tratado pelo pai
     } catch (err: any) {
-      /* ----------------------------------------------------------------
-         1) Garante que qualquer formato de erro apareça no campo e-mail
-         2) Se não for 409, dispara um toast genérico
-      ------------------------------------------------------------------*/
       console.error('Erro createRestaurant:', err);
-  
-      const status  = err?.status ?? err?.code;      // Supabase v2 às vezes usa code
-      const message = err?.message ?? String(err);
-  
-      if (status === 409 || /duplicate|existe|409/i.test(message)) {
-        setEmailError('Email já cadastrado');
-        // opcional: integra com react-hook-form para borda vermelha via errors.*
-        setError('emailOwner', { type: 'manual', message: 'Email já cadastrado' });
+
+      /* ---- Extrai status e corpo se for FunctionsHttpError ---- */
+      let status  = err?.status ?? err?.code;
+      let details = err?.message ?? '';
+
+      if (err instanceof FunctionsHttpError && err.context?.response) {
+        status = err.context.response.status;
+        try {
+          details = await err.context.response.text();
+        } catch {
+          /* ignore */
+        }
+      }
+
+      if (status === 409) {
+        const msg = /email/i.test(details) ? details : 'Email já cadastrado';
+        setEmailError(msg);
+        setError('emailOwner', { type: 'manual', message: msg });
       } else {
         toast.error('Aconteceu um erro, tente novamente mais tarde.');
-        setEmailError(message);            // mostra mensagem bruta para depuração
+        setEmailError(details || 'Erro inesperado');
       }
     }
-  };  
+  };
 
   const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatCep(e.target.value);
@@ -425,7 +434,3 @@ const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(
   ),
 );
 InputField.displayName = 'InputField';
-function setError(arg0: string, arg1: { type: string; message: string; }) {
-  throw new Error('Function not implemented.');
-}
-
