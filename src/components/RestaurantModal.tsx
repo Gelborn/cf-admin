@@ -137,7 +137,7 @@ export function RestaurantModal({
     } catch (err: any) {
       /* err tem shape { status, message } lançado pela mutation */
       const status  = err?.status;
-      const message = err?.message ?? 'Erro desconhecido';
+      const message = 'Não foi possível criar o restaurante, tente novamente mais tarde.';
   
       if (status === 409) {
         const msg = 'Email já cadastrado';
