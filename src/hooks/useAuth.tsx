@@ -121,15 +121,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    setIsCfUser(null);
+    /* 1) zera estados locais na hora */
+    setUser(null);
+    setSession(null);
+    setIsCfUser(false);
     localStorage.removeItem('isCfUser');
+
+    /* 2) limpa metadata (opcional) */
     try {
       await supabase.auth.updateUser({ data: { is_cf: null } });
-    } catch (error) {
-      console.error('Erro ao limpar metadata:', error);
+    } catch (err) {
+      console.warn('Falha ao limpar metadata (ignorado):', err);
     }
+
+    /* 3) encerra sessão no Supabase */
     await supabase.auth.signOut({ scope: 'local' });
   };
+
 
   return (
     <AuthContext.Provider value={{
