@@ -76,17 +76,12 @@ export function Restaurants() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['restaurants'] });
-      setIsModalOpen(false);
       toast.success('Restaurante criado com sucesso!');
+      // Modal será fechado automaticamente pelo componente
     },
     onError: (error: any) => {
-      if (error.message?.includes('409')) {
-        toast.error('E-mail já cadastrado');
-      } else if (error.message?.includes('422')) {
-        toast.error('CEP inválido');
-      } else {
-        toast.error(error.message || 'Erro ao criar restaurante');
-      }
+      // Erros serão tratados pelo modal
+      console.error('Erro ao criar restaurante:', error);
     },
   });
 
