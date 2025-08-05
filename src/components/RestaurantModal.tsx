@@ -8,7 +8,6 @@ import {
 import { X, User, MapPin, Search } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
-import { FunctionsHttpError } from '@supabase/supabase-js';
 
 /* ------------------------------------------------------------------ */
 /* Tipos                                                               */
@@ -78,12 +77,21 @@ export function RestaurantModal({
       )?.value;
       if (domEmail) {
         setValue('emailOwner', domEmail);
-        // força revalidação imediata
         trigger('emailOwner').catch(() => null);
       }
     }, 200);
     return () => clearTimeout(t);
   }, [isOpen, setValue, trigger]);
+
+  /* -------- NEW: reseta tudo quando modal é fechado ----------------- */
+  useEffect(() => {
+    if (!isOpen) {
+      reset();
+      setEmailError('');
+      setCepError('');
+      setCepSearched(false);
+    }
+  }, [isOpen, reset]);
 
   /* ------------------------ Helpers --------------------------------- */
   const formatCep = (v: string) => v.replace(/\D/g, '').slice(0, 8);
@@ -134,11 +142,11 @@ export function RestaurantModal({
 
     try {
       await onSubmit(data);
+      closeModal();                 // NEW: fecha & reseta
     } catch (err: any) {
-      /* err tem shape { status, message } lançado pela mutation */
       const status  = err?.status;
       const message = 'Não foi possível criar o restaurante, tente novamente mais tarde.';
-  
+
       if (status === 409) {
         const msg = 'Email já cadastrado';
         setEmailError(msg);
@@ -146,7 +154,7 @@ export function RestaurantModal({
       } else {
         toast.error(message, { style: { zIndex: 9999 } });
       }
-    }     
+    }
   };
 
   const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {

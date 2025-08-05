@@ -82,34 +82,44 @@ export function Restaurants() {
   /* ---------------------- Mutation: create -------------------- */
   const createRestaurantMutation = useMutation({
     mutationFn: async (payload: CreateRestaurantPayload) => {
-      const { data } = await supabase.functions
-        .invoke<{ id: string }>('cf_create_restaurant', {
-          body: payload,
-          headers: { Authorization: `Bearer ${session?.access_token}` },
-        })
-        .throwOnError();                    // lança se HTTP >= 400
+      try {
+        const { data, error } = await supabase.functions.invoke<{ id: string }>(
+          'cf_create_restaurant',
+          {
+            body: payload,
+            headers: { Authorization: `Bearer ${session?.access_token}` },
+          },
+        );
 
-      if (!data) throw new Error('Função não retornou dados.');
-      return data;                          // { id }
-    },
+        /* se a Edge Function enviou erro 4xx/5xx */
+        if (error) {
+          throw { status: error.status ?? 500, message: error.message };
+        }
 
-    onSuccess: () => {
-      toast.success('Restaurante criado!');
-      qc.invalidateQueries({ queryKey: ['restaurants'] });
-      setIsModalOpen(false);
-    },
+        /* chegamos aqui = status 2xx, mesmo sem `data` */
+        return data ?? {};               // aceita corpo vazio
 
-    onError: (err: any) => {
-      const msg = err.message ?? '';
-      if (msg.includes('email_exists') || msg.includes('E-mail já cadastrado')) {
-        toast.error('E-mail já cadastrado');
-      } else {
-        toast.error('Aconteceu um erro, tente novamente.');
+      } catch (rawErr: any) {
+        const resp: Response | undefined =
+          rawErr?.response ?? rawErr?.context?.response;
+
+        const status  = resp?.status ?? rawErr?.status ?? 500;
+        let   message = rawErr?.message ?? 'Erro desconhecido';
+
+        if (resp) {
+          try { message = await resp.text(); } catch {/* ignore */}
+        }
+        throw { status, message };
       }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['restaurants'] });
+      toast.success('Restaurante criado com sucesso!');
+      setIsModalOpen(false);
     },
   });
 
-  /* helper para o modal */
+  /* helper para o modal (async) */
   const handleCreateRestaurant = (data: CreateRestaurantPayload) =>
     createRestaurantMutation.mutateAsync(data);
 
@@ -176,7 +186,104 @@ export function Restaurants() {
         </div>
 
         {/* ---------- TABLE ---------- */}
-        {/* ... resto do componente permanece igual ... */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Lista de Restaurantes</h2>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                {['Restaurante', 'Contato', 'Endereço', 'Parcerias', 'Status', 'Ações'].map(h => (
+                  <th
+                    key={h}
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    {h}
+                  </th>
+                ))}
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {restaurants?.map((r) => (
+                  <tr key={r.id} className="hover:bg-gray-50">
+                    {/* Restaurante */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                          <Users className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{r.name}</div>
+                          <div className="text-sm text-gray-500">ID: {r.id.slice(0, 8)}...</div>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Contato */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <ContactLine icon={Mail} value={r.email} />
+                      {r.phone && <ContactLine icon={Phone} value={r.phone} />}
+                    </td>
+
+                    {/* Endereço */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <ContactLine icon={MapPin} value={`${r.city}, ${r.uf}`} />
+                      <div className="text-sm text-gray-500">
+                        {r.street}, {r.number}
+                      </div>
+                    </td>
+
+                    {/* Parcerias */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {r.partners_list?.length ? (
+                        <div className="space-y-1 text-sm text-gray-900">
+                          <div className="flex items-center">
+                            <Building2 className="h-4 w-4 mr-2 text-blue-500" />
+                            <span className="font-medium">{r.partners_list.length} parceria(s)</span>
+                          </div>
+                          {r.favorite_osc && (
+                            <div className="flex items-center">
+                              <Heart className="h-3 w-3 mr-1 text-red-500 fill-current" />
+                              <span className="text-xs text-gray-600">
+                                Favorita: {r.favorite_osc.name}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">Nenhuma parceria</span>
+                      )}
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <StatusPill status={r.status} />
+                    </td>
+
+                    {/* Ações */}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => handleOpenNewPartnership(r.id)}
+                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Nova Parceria
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Empty state */}
+          {(!restaurants || restaurants.length === 0) && (
+            <EmptyState onAdd={() => {
+              createRestaurantMutation.reset();
+              setIsModalOpen(true);
+            }} />
+          )}
+        </div>
       </div>
 
       {/* ---------- MODAIS ---------- */}
@@ -200,7 +307,7 @@ export function Restaurants() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Sub-componentes utilitários — permanecem inalterados                */
+/* Sub-componentes utilitários                                         */
 /* ------------------------------------------------------------------ */
 const StatCard = ({
   icon,
