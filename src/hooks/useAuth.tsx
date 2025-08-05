@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: isCf, error } = await supabase.rpc('is_cf');
         if (error) {
           console.error('Erro ao verificar permissões:', error);
-          await supabase.auth.signOut();
+          await supabase.auth.signOut({ scope: 'local' });
           toast.error('Erro ao verificar permissões');
           setIsCfUser(null);
         } else {
@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error('Erro na verificação CF:', error);
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: 'local' });
         toast.error('Erro ao verificar permissões');
         setIsCfUser(null);
       } finally {
@@ -65,14 +65,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const { data: isCf, error } = await supabase.rpc('is_cf');
             if (error) {
               console.error('Erro ao verificar permissões:', error);
-              await supabase.auth.signOut();
+              await supabase.auth.signOut({ scope: 'local' });
               toast.error('Erro ao verificar permissões');
               setIsCfUser(null);
               return;
             }
 
             if (!isCf) {
-              await supabase.auth.signOut();
+              await supabase.auth.signOut({ scope: 'local' });
               toast.error('Acesso restrito a usuários Connecting Food');
               setIsCfUser(null);
               return;
@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setIsCfUser(true);
           } catch (error) {
             console.error('Erro na verificação CF:', error);
-            await supabase.auth.signOut();
+            await supabase.auth.signOut({ scope: 'local' });
             toast.error('Erro ao verificar permissões');
             setIsCfUser(null);
           }
@@ -106,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setIsCfUser(null);
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
   };
 
   return (
