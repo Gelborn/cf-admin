@@ -135,41 +135,43 @@ export function RestaurantModal({
     try {
       await onSubmit(data);
     } catch (err: unknown) {
-      /* ----------- extrai status & corpo ---------------- */
-      let status: number | string | undefined;
-      let body = '';
-
-      if (
-        err instanceof FunctionsHttpError &&
-        err.context?.response
-      ) {
-        status = err.context.response.status;
-        if (typeof err.context.response.clone === 'function') {
+      /* ----------- SUPABASE FUNCTIONS ERROR ----------- */
+      let status: number | undefined;
+      let body   = '';
+  
+      if (typeof err === 'object' && err !== null) {
+        // Supabase coloca o response bruto aqui ↓ (não-enumerável)
+        const resp = (err as any).response as Response | undefined;
+        if (resp) {
+          status = resp.status;
           try {
-            body = await err.context.response.clone().text();
-          } catch {
-            /* ignore */
-          }
+            body = await resp.clone().text();
+          } catch {/* ignore */}
+        } else {
+          // fallback – message padrão do SDK
+          body = (err as any).message ?? '';
         }
-      } else if (typeof err === 'object' && err !== null) {
-        status = (err as any).status ?? (err as any).code;
-        body = (err as any).message ?? '';
       }
-
-      console.error('❌ Supabase error ⇒', { status, body, err });
-
+  
+      /* ----------- LOG para ver no DevTools ----------- */
+      console.error('❌ status=', status, 'body=', body, err);
+  
+      /* ----------- DUPLICIDADE ------------------------ */
       const duplicate =
         status === 409 ||
         /e-?mail.+cadastrado|duplicate/i.test(body);
-
+  
       if (duplicate) {
         const msg = 'Email já cadastrado';
         setEmailError(msg);
         setError('emailOwner', { type: 'manual', message: msg });
       } else {
-        toast.error('Aconteceu um erro, tente novamente mais tarde.');
+        /* -- toast isolado (z-index muito alto) -- */
+        toast.error('Aconteceu um erro, tente novamente mais tarde.', {
+          style: { zIndex: 9999 },
+        });
       }
-    }
+    }  
   };
 
   const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
