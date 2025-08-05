@@ -327,6 +327,8 @@ export function Restaurants() {
         onClose={() => setIsModalOpen(false)}
         onSubmit={(data) => createRestaurantMutation.mutate(data)}
         isLoading={createRestaurantMutation.isPending}
+        error={createRestaurantMutation.error}
+        error={createRestaurantMutation.error}
       />
 
       <NewPartnershipModal

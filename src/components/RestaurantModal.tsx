@@ -28,7 +28,7 @@ interface Props {
   isLoading: boolean;
 }
 
-export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props) {
+export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading, error }: Props) {
   const [cepLoading, setCepLoading] = useState(false);
   const [emailError, setEmailError] = useState<string>('');
   const [cepError, setCepError] = useState<string>('');
@@ -175,6 +175,7 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props)
                     </label>
                     <input
                       type="email"
+                      autoComplete="email"
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                         emailError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
                       }`}
@@ -185,8 +186,8 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props)
                           value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
                           message: 'Email inválido',
                         },
+                        onChange: () => setEmailError(''),
                       })}
-                      onChange={() => setEmailError('')}
                     />
                     {errors.emailOwner && (
                       <p className="text-sm text-red-600 mt-1">{errors.emailOwner.message}</p>
