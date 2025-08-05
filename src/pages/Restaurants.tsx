@@ -77,11 +77,10 @@ export function Restaurants() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['restaurants'] });
       toast.success('Restaurante criado com sucesso!');
-      // Modal será fechado automaticamente pelo componente
+      setIsModalOpen(false);
     },
     onError: (error: any) => {
-      // Erros serão tratados pelo modal
-      console.error('Erro ao criar restaurante:', error);
+      // Não fazer nada aqui - erros são tratados pelo modal
     },
   });
 
