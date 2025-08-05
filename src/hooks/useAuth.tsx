@@ -22,10 +22,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
+
+      if (!session) {
+        setIsCfUser(false);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data: isCf, error } = await supabase.rpc('is_cf');
+        if (error) {
+          console.error('Erro ao verificar permissões:', error);
+          await supabase.auth.signOut();
+          toast.error('Erro ao verificar permissões');
+          setIsCfUser(null);
+        } else {
+          setIsCfUser(Boolean(isCf));
+        }
+      } catch (error) {
+        console.error('Erro na verificação CF:', error);
+        await supabase.auth.signOut();
+        toast.error('Erro ao verificar permissões');
+        setIsCfUser(null);
+      } finally {
+        setLoading(false);
+      }
     });
 
     // Listen for auth changes
