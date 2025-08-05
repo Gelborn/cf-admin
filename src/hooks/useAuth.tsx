@@ -21,75 +21,91 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isCfUser, setIsCfUser] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (!session) {
-        setIsCfUser(false);
-        setLoading(false);
-        return;
-      }
-
+    const init = async () => {
       try {
-        const { data: isCf, error } = await supabase.rpc('is_cf');
-        if (error) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        const cached =
+          session?.user?.user_metadata?.is_cf ??
+          JSON.parse(localStorage.getItem('isCfUser') ?? 'null');
+
+        if (!session) {
+          setIsCfUser(false);
+          return;
+        }
+
+        if (cached !== null) {
+          setIsCfUser(Boolean(cached));
+          return;
+        }
+
+        try {
+          const { data: isCf, error } = await supabase.rpc('is_cf');
+          if (error || !isCf) {
+            throw error ?? new Error('Acesso restrito a usuários Connecting Food');
+          }
+          setIsCfUser(Boolean(isCf));
+          await supabase.auth.updateUser({ data: { is_cf: isCf } });
+          localStorage.setItem('isCfUser', JSON.stringify(isCf));
+        } catch (error) {
           console.error('Erro ao verificar permissões:', error);
           await supabase.auth.signOut({ scope: 'local' });
+          localStorage.removeItem('isCfUser');
           toast.error('Erro ao verificar permissões');
-          setIsCfUser(null);
-        } else {
-          setIsCfUser(Boolean(isCf));
+          setIsCfUser(false);
         }
       } catch (error) {
-        console.error('Erro na verificação CF:', error);
-        await supabase.auth.signOut({ scope: 'local' });
-        toast.error('Erro ao verificar permissões');
-        setIsCfUser(null);
+        console.error('Erro ao obter sessão:', error);
+        setIsCfUser(false);
       } finally {
         setLoading(false);
       }
-    });
+    };
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+    init();
 
-        if (session?.user) {
-          // Verificar se o usuário é CF
-          try {
-            const { data: isCf, error } = await supabase.rpc('is_cf');
-            if (error) {
-              console.error('Erro ao verificar permissões:', error);
-              await supabase.auth.signOut({ scope: 'local' });
-              toast.error('Erro ao verificar permissões');
-              setIsCfUser(null);
-              return;
-            }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
 
-            if (!isCf) {
-              await supabase.auth.signOut({ scope: 'local' });
-              toast.error('Acesso restrito a usuários Connecting Food');
-              setIsCfUser(null);
-              return;
-            }
-
-            setIsCfUser(true);
-          } catch (error) {
-            console.error('Erro na verificação CF:', error);
-            await supabase.auth.signOut({ scope: 'local' });
-            toast.error('Erro ao verificar permissões');
-            setIsCfUser(null);
-          }
-        } else {
-          setIsCfUser(null);
+      if (session?.user) {
+        const cached =
+          session.user.user_metadata?.is_cf ??
+          JSON.parse(localStorage.getItem('isCfUser') ?? 'null');
+        if (cached !== null) {
+          setIsCfUser(Boolean(cached));
+          setLoading(false);
+          return;
         }
+
+        try {
+          const { data: isCf, error } = await supabase.rpc('is_cf');
+          if (error || !isCf) {
+            throw error ?? new Error('Acesso restrito a usuários Connecting Food');
+          }
+          setIsCfUser(true);
+          await supabase.auth.updateUser({ data: { is_cf: isCf } });
+          localStorage.setItem('isCfUser', JSON.stringify(isCf));
+        } catch (error) {
+          console.error('Erro na verificação CF:', error);
+          await supabase.auth.signOut({ scope: 'local' });
+          localStorage.removeItem('isCfUser');
+          toast.error('Erro ao verificar permissões');
+          setIsCfUser(false);
+        }
+      } else {
+        setIsCfUser(null);
+        localStorage.removeItem('isCfUser');
       }
-    );
+
+      setLoading(false);
+    });
 
     return () => subscription.unsubscribe();
   }, []);
@@ -106,6 +122,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setIsCfUser(null);
+    localStorage.removeItem('isCfUser');
+    try {
+      await supabase.auth.updateUser({ data: { is_cf: null } });
+    } catch (error) {
+      console.error('Erro ao limpar metadata:', error);
+    }
     await supabase.auth.signOut({ scope: 'local' });
   };
 
