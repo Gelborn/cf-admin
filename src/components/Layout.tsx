@@ -1,10 +1,21 @@
 import { Outlet } from 'react-router-dom';
 import { LogOut, LayoutDashboard, Store, Heart } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
 import { Link, useLocation } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 
 export function Layout() {
-  const { signOut } = useAuth();
+  const signOut = async () => {
+    setUser(null);
+    setSession(null);
+    setIsCfUser(false);
+    localStorage.removeItem('isCfUser');
+    try {
+      await supabase.auth.updateUser({ data: { is_cf: null } });
+    } finally {
+      await supabase.auth.signOut({ scope: 'local' });
+    }
+  };
+  
   const location = useLocation();
 
   const navigation = [
@@ -71,4 +82,18 @@ export function Layout() {
       </div>
     </div>
   );
+}
+
+function setUser(arg0: null) {
+  throw new Error('Function not implemented.');
+}
+
+
+function setSession(arg0: null) {
+  throw new Error('Function not implemented.');
+}
+
+
+function setIsCfUser(arg0: boolean) {
+  throw new Error('Function not implemented.');
 }
