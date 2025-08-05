@@ -78,9 +78,11 @@ export function Restaurants() {
       queryClient.invalidateQueries({ queryKey: ['restaurants'] });
       toast.success('Restaurante criado com sucesso!');
       setIsModalOpen(false);
+      setIsModalOpen(false);
     },
     onError: (error: any) => {
-      // Não fazer nada aqui - erros são tratados pelo modal
+      // Erros são tratados pelo modal, mas precisamos manter aberto
+      console.error('Erro ao criar restaurante:', error);
     },
   });
 

@@ -98,8 +98,7 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props)
     setEmailError('');
     
     try {
-      await onSubmit(data);
-      closeModal();
+      onSubmit(data);
     } catch (error: any) {
       if (error.message?.includes('409') || error.message?.includes('Email já cadastrado')) {
         setEmailError('Email já cadastrado');
