@@ -17,16 +17,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  if (!user || isCfUser === false) {
+  if (!user || isCfUser === false || isCfUser === null) {
     return <Navigate to="/login" replace />;
-  }
-
-  if (isCfUser === null) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
-    );
   }
 
   return <>{children}</>;
