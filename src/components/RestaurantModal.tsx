@@ -116,19 +116,32 @@ export function RestaurantModal({
   }, [cepValue, setValue]);
 
   const handleFormSubmit = async (data: RestaurantFormData) => {
+    // sempre resetamos antes
     setEmailError('');
+    clearErrors('emailOwner');
+  
     try {
-      await onSubmit(data); // ← aguarda a mutation
-      // Sucesso é tratado no componente pai (fecha modal/toast)
+      await onSubmit(data);               // ← se sucesso, pai fecha modal
     } catch (err: any) {
-      const msg = err?.message ?? '';
-      if (err?.status === 409 || /409|Email já cadastrado/i.test(msg)) {
+      /* ----------------------------------------------------------------
+         1) Garante que qualquer formato de erro apareça no campo e-mail
+         2) Se não for 409, dispara um toast genérico
+      ------------------------------------------------------------------*/
+      console.error('Erro createRestaurant:', err);
+  
+      const status  = err?.status ?? err?.code;      // Supabase v2 às vezes usa code
+      const message = err?.message ?? String(err);
+  
+      if (status === 409 || /duplicate|existe|409/i.test(message)) {
         setEmailError('Email já cadastrado');
+        // opcional: integra com react-hook-form para borda vermelha via errors.*
+        setError('emailOwner', { type: 'manual', message: 'Email já cadastrado' });
       } else {
         toast.error('Aconteceu um erro, tente novamente mais tarde.');
+        setEmailError(message);            // mostra mensagem bruta para depuração
       }
     }
-  };
+  };  
 
   const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatCep(e.target.value);
@@ -412,3 +425,7 @@ const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(
   ),
 );
 InputField.displayName = 'InputField';
+function setError(arg0: string, arg1: { type: string; message: string; }) {
+  throw new Error('Function not implemented.');
+}
+
