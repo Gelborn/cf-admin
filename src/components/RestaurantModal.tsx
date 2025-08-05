@@ -3,8 +3,12 @@ import { useForm } from 'react-hook-form';
 import { X, User, MapPin, Search } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
+import React from 'react';
 
-interface RestaurantFormData {
+/* ------------------------------------------------------------------ */
+/* Tipos                                                               */
+/* ------------------------------------------------------------------ */
+export interface RestaurantFormData {
   name: string;
   emailOwner: string;
   phone: string;
@@ -24,16 +28,31 @@ interface CepData {
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: RestaurantFormData) => void;
+  /** agora devolve uma Promise para o modal poder await/capturar erros */
+  onSubmit: (data: RestaurantFormData) => Promise<any>;
   isLoading: boolean;
 }
 
-export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props) {
+/* ------------------------------------------------------------------ */
+/* Componente                                                          */
+/* ------------------------------------------------------------------ */
+export function RestaurantModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  isLoading,
+}: Props) {
+  /* ------------------------------- */
+  /* Estado interno                  */
+  /* ------------------------------- */
   const [cepLoading, setCepLoading] = useState(false);
-  const [emailError, setEmailError] = useState<string>('');
-  const [cepError, setCepError] = useState<string>('');
+  const [emailError, setEmailError] = useState('');
+  const [cepError, setCepError] = useState('');
   const [cepSearched, setCepSearched] = useState(false);
 
+  /* ------------------------------- */
+  /* React-Hook-Form                 */
+  /* ------------------------------- */
   const {
     register,
     handleSubmit,
@@ -46,6 +65,12 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props)
 
   const cepValue = watch('cep');
 
+  /* ------------------------------------------------------------------ */
+  /* Helpers                                                             */
+  /* ------------------------------------------------------------------ */
+  const formatCep = (value: string) =>
+    value.replace(/\D/g, '').slice(0, 8); // apenas números (8 dígitos)
+
   const closeModal = () => {
     reset();
     setEmailError('');
@@ -53,13 +78,6 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props)
     setCepSearched(false);
     clearErrors();
     onClose();
-  };
-
-  // Função para formatar CEP (apenas números, preservando todos os dígitos)
-  const formatCep = (value: string) => {
-    // Remove tudo que não é número e limita a 8 dígitos
-    const numbers = value.replace(/\D/g, '').slice(0, 8);
-    return numbers;
   };
 
   const fetchCepInfo = useCallback(async () => {
@@ -70,12 +88,15 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props)
 
     setCepLoading(true);
     setCepError('');
-    
+
     try {
-      const { data, error } = await supabase.functions.invoke<CepData>('util_cep_info', {
-        method: 'POST',
-        body: { cep: cepValue },
-      });
+      const { data, error } = await supabase.functions.invoke<CepData>(
+        'util_cep_info',
+        {
+          method: 'POST',
+          body: { cep: cepValue },
+        },
+      );
 
       if (error) throw error;
 
@@ -96,11 +117,12 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props)
 
   const handleFormSubmit = async (data: RestaurantFormData) => {
     setEmailError('');
-    
     try {
-      onSubmit(data);
-    } catch (error: any) {
-      if (error.message?.includes('409') || error.message?.includes('Email já cadastrado')) {
+      await onSubmit(data); // ← aguarda a mutation
+      // Sucesso é tratado no componente pai (fecha modal/toast)
+    } catch (err: any) {
+      const msg = err?.message ?? '';
+      if (err?.status === 409 || /409|Email já cadastrado/i.test(msg)) {
         setEmailError('Email já cadastrado');
       } else {
         toast.error('Aconteceu um erro, tente novamente mais tarde.');
@@ -113,23 +135,32 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props)
     setValue('cep', formatted);
     setCepError('');
     setCepSearched(false);
-    // Limpa os campos de endereço quando CEP muda
+    // limpa endereço quando CEP muda
     setValue('street', '');
     setValue('city', '');
     setValue('uf', '');
   };
 
+  /* ------------------------------------------------------------------ */
+  /* Render                                                              */
+  /* ------------------------------------------------------------------ */
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 py-8">
-        <div className="fixed inset-0 bg-gray-500/75" onClick={closeModal} />
+        <div
+          className="fixed inset-0 bg-gray-500/75"
+          onClick={closeModal}
+        />
 
         <div className="relative bg-white rounded-xl shadow-xl max-w-4xl w-full">
+          {/* ---------- Header ---------- */}
           <div className="flex items-center justify-between p-6 border-b">
             <div>
-              <h3 className="text-xl font-semibold text-gray-900">Novo Restaurante</h3>
+              <h3 className="text-xl font-semibold text-gray-900">
+                Novo Restaurante
+              </h3>
               <p className="text-sm text-gray-500">
                 Preencha as informações para cadastrar um novo restaurante
               </p>
@@ -142,85 +173,74 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props)
             </button>
           </div>
 
+          {/* ---------- Form ---------- */}
           <div className="p-6">
-            <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+            <form
+              onSubmit={handleSubmit(handleFormSubmit)}
+              className="space-y-6"
+            >
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Bloco 1: Identificação e Contato */}
+                {/* ===== Identificação / Contato ===== */}
                 <div className="space-y-4">
-                  <div className="flex items-center mb-4">
-                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                      <User className="w-4 h-4 text-blue-600" />
-                    </div>
-                    <h4 className="text-lg font-medium text-gray-900">Identificação e Contato</h4>
-                  </div>
+                  <SectionHeader
+                    iconBg="bg-blue-100"
+                    iconColor="text-blue-600"
+                    Icon={User}
+                    title="Identificação e Contato"
+                  />
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nome do Restaurante
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                      placeholder="Ex: McDonald's Av. Paulista"
-                      {...register('name', { required: 'Nome é obrigatório' })}
-                    />
-                    {errors.name && (
-                      <p className="text-sm text-red-600 mt-1">{errors.name.message}</p>
-                    )}
-                  </div>
+                  {/* Nome */}
+                  <InputField
+                    label="Nome do Restaurante"
+                    placeholder="Ex: McDonald's Av. Paulista"
+                    error={errors.name?.message}
+                    {...register('name', { required: 'Nome é obrigatório' })}
+                  />
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email do Proprietário
-                    </label>
-                    <input
-                      type="email"
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                        emailError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
-                      }`}
-                      placeholder="gerente@restaurante.com"
-                      {...register('emailOwner', {
-                        required: 'Email é obrigatório',
-                        pattern: {
-                          value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                          message: 'Email inválido',
-                        },
-                      })}
-                      onChange={() => setEmailError('')}
-                    />
-                    {errors.emailOwner && (
-                      <p className="text-sm text-red-600 mt-1">{errors.emailOwner.message}</p>
-                    )}
-                    {emailError && (
-                      <p className="text-sm text-red-600 mt-1">{emailError}</p>
-                    )}
-                  </div>
+                  {/* Email */}
+                  <InputField
+                    label="Email do Proprietário"
+                    type="email"
+                    placeholder="gerente@restaurante.com"
+                    error={errors.emailOwner?.message || emailError}
+                    inputClassName={
+                      emailError
+                        ? 'border-red-500 focus:ring-red-500'
+                        : ''
+                    }
+                    {...register('emailOwner', {
+                      required: 'Email é obrigatório',
+                      pattern: {
+                        value:
+                          /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                        message: 'Email inválido',
+                      },
+                    })}
+                    onChange={() => setEmailError('')}
+                  />
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Telefone
-                    </label>
-                    <input
-                      type="tel"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                      placeholder="(11) 99999-9999"
-                      {...register('phone', { required: 'Telefone é obrigatório' })}
-                    />
-                    {errors.phone && (
-                      <p className="text-sm text-red-600 mt-1">{errors.phone.message}</p>
-                    )}
-                  </div>
+                  {/* Telefone */}
+                  <InputField
+                    label="Telefone"
+                    type="tel"
+                    placeholder="(11) 99999-9999"
+                    error={errors.phone?.message}
+                    {...register('phone', {
+                      required: 'Telefone é obrigatório',
+                    })}
+                  />
                 </div>
 
-                {/* Bloco 2: Endereço */}
+                {/* ===== Endereço ===== */}
                 <div className="space-y-4">
-                  <div className="flex items-center mb-4">
-                    <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                      <MapPin className="w-4 h-4 text-green-600" />
-                    </div>
-                    <h4 className="text-lg font-medium text-gray-900">Endereço</h4>
-                  </div>
+                  <SectionHeader
+                    iconBg="bg-green-100"
+                    iconColor="text-green-600"
+                    Icon={MapPin}
+                    title="Endereço"
+                  />
 
+                  {/* CEP */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       CEP
@@ -232,8 +252,8 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props)
                           placeholder="00000000"
                           value={cepValue || ''}
                           className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-colors ${
-                            cepError 
-                              ? 'border-red-500 focus:ring-red-500' 
+                            cepError
+                              ? 'border-red-500 focus:ring-red-500'
                               : 'border-gray-300 focus:ring-blue-500'
                           }`}
                           {...register('cep', {
@@ -245,17 +265,19 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props)
                           })}
                           onChange={handleCepChange}
                         />
-                        {errors.cep && (
-                          <p className="text-sm text-red-600 mt-1">{errors.cep.message}</p>
-                        )}
-                        {cepError && (
-                          <p className="text-sm text-red-600 mt-1">{cepError}</p>
+                        {(errors.cep || cepError) && (
+                          <p className="text-sm text-red-600 mt-1">
+                            {errors.cep?.message || cepError}
+                          </p>
                         )}
                       </div>
+
                       <button
                         type="button"
                         onClick={fetchCepInfo}
-                        disabled={cepLoading || !cepValue || cepValue.length !== 8}
+                        disabled={
+                          cepLoading || !cepValue || cepValue.length !== 8
+                        }
                         className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
                       >
                         {cepLoading ? (
@@ -267,71 +289,54 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props)
                     </div>
                   </div>
 
-                  {/* Campos de endereço - só aparecem após buscar CEP */}
+                  {/* Endereço completo – aparece após CEP válido */}
                   {cepSearched && (
                     <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
                       <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-sm text-green-800 font-medium">✓ CEP encontrado com sucesso!</p>
+                        <p className="text-sm text-green-800 font-medium">
+                          ✓ CEP encontrado com sucesso!
+                        </p>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Rua
-                          </label>
-                          <input
-                            type="text"
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
-                            {...register('street')}
-                            readOnly
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Número *
-                          </label>
-                          <input
-                            type="text"
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                            placeholder="Ex: 1578"
-                            {...register('number', { required: 'Número é obrigatório' })}
-                          />
-                          {errors.number && (
-                            <p className="text-sm text-red-600 mt-1">{errors.number.message}</p>
-                          )}
-                        </div>
+                        <InputField
+                          label="Rua"
+                          readOnly
+                          bg="bg-gray-50 text-gray-600"
+                          {...register('street')}
+                        />
+
+                        <InputField
+                          label="Número *"
+                          placeholder="Ex: 1578"
+                          error={errors.number?.message}
+                          {...register('number', {
+                            required: 'Número é obrigatório',
+                          })}
+                        />
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Cidade
-                          </label>
-                          <input
-                            type="text"
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
-                            {...register('city')}
-                            readOnly
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            UF
-                          </label>
-                          <input
-                            type="text"
-                            maxLength={2}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
-                            {...register('uf')}
-                            readOnly
-                          />
-                        </div>
+                        <InputField
+                          label="Cidade"
+                          readOnly
+                          bg="bg-gray-50 text-gray-600"
+                          {...register('city')}
+                        />
+                        <InputField
+                          label="UF"
+                          maxLength={2}
+                          readOnly
+                          bg="bg-gray-50 text-gray-600"
+                          {...register('uf')}
+                        />
                       </div>
                     </div>
                   )}
                 </div>
               </div>
 
+              {/* ---------- Ações ---------- */}
               <div className="flex justify-end pt-6 space-x-3 border-t">
                 <button
                   type="button"
@@ -355,3 +360,55 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props)
     </div>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Sub-componentes utilitários                                         */
+/* ------------------------------------------------------------------ */
+const SectionHeader = ({
+  iconBg,
+  iconColor,
+  Icon,
+  title,
+}: {
+  iconBg: string;
+  iconColor: string;
+  Icon: typeof User;
+  title: string;
+}) => (
+  <div className="flex items-center mb-4">
+    <div
+      className={`w-8 h-8 ${iconBg} rounded-lg flex items-center justify-center mr-3`}
+    >
+      <Icon className={`w-4 h-4 ${iconColor}`} />
+    </div>
+    <h4 className="text-lg font-medium text-gray-900">{title}</h4>
+  </div>
+);
+
+interface InputFieldProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {
+  label: string;
+  error?: string;
+  bg?: string;
+  inputClassName?: string;
+}
+const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(
+  ({ label, error, bg, inputClassName = '', ...rest }, ref) => (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        {label}
+      </label>
+      <input
+        ref={ref}
+        className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${bg ?? ''} ${inputClassName}`}
+        {...rest}
+      />
+      {error && (
+        <p className="text-sm text-red-600 mt-1">
+          {error}
+        </p>
+      )}
+    </div>
+  ),
+);
+InputField.displayName = 'InputField';
