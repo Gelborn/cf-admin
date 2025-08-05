@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { X, MapPin, Search, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { supabasePublic } from '../lib/supabasePublic';
+import { supabase } from '../lib/supabase';
 
 /* ────────── types ────────── */
 interface RestaurantFormData {
@@ -58,7 +58,7 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props)
   const fetchCepInfo = async (cep: string) => {
     setCepLoading(true);
     try {
-      const { data, error } = await supabasePublic.functions.invoke<CepData>('util_cep_info', {
+      const { data, error } = await supabase.functions.invoke<CepData>('util_cep_info', {
         body: { cep }, // POST JSON
       });
       if (error) throw error;
