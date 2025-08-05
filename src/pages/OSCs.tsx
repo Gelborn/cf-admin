@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { OSCModal } from '../components/OSCModal';
 import toast from 'react-hot-toast';
+import { FunctionsError } from '@supabase/supabase-js';
 
 interface OSC {
   id: string;
@@ -18,6 +19,19 @@ interface OSC {
   phone: string;
   status: 'active' | 'inactive' | 'invite_sent';
   added_at: string;
+}
+
+interface CreateOSCPayload {
+  name: string;
+  cnpj?: string;
+  email?: string;
+  cep: string;
+  number: string;
+  responsible_name: string;
+  phone: string;
+  street?: string;
+  city?: string;
+  uf?: string;
 }
 
 export function OSCs() {
@@ -38,9 +52,9 @@ export function OSCs() {
     },
   });
 
-  const createOSCMutation = useMutation({
-    mutationFn: async (oscData: any) => {
-      const { data, error } = await supabase.functions.invoke('cf_create_osc', {
+  const createOSCMutation = useMutation<OSC, FunctionsError, CreateOSCPayload>({
+    mutationFn: async (oscData: CreateOSCPayload) => {
+      const { data, error } = await supabase.functions.invoke<OSC>('cf_create_osc', {
         body: oscData,
         headers: {
           Authorization: `Bearer ${session?.access_token}`,
@@ -55,7 +69,7 @@ export function OSCs() {
       setIsModalOpen(false);
       toast.success('OSC criada com sucesso!');
     },
-    onError: (error: any) => {
+    onError: (error: FunctionsError) => {
       toast.error(error.message || 'Erro ao criar OSC');
     },
   });
