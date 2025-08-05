@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { X, User, MapPin, Search } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -28,8 +28,7 @@ interface CepData {
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  /** devolve Promise para o modal await/capturar erros */
-  onSubmit: (data: RestaurantFormData) => Promise<any>;
+  onSubmit: (data: RestaurantFormData) => Promise<any>; // devolve Promise
   isLoading: boolean;
 }
 
@@ -65,6 +64,22 @@ export function RestaurantModal({
   } = useForm<RestaurantFormData>();
 
   const cepValue = watch('cep');
+
+  /* ------------------------------------------------------------------ */
+  /* Sincronizar autofill (Chrome, Safari etc.)                          */
+  /* ------------------------------------------------------------------ */
+  useEffect(() => {
+    if (isOpen) {
+      // pequeno delay p/ autofill executar
+      const t = setTimeout(() => {
+        const domEmail = (
+          document.querySelector('input[name="emailOwner"]') as HTMLInputElement
+        )?.value;
+        if (domEmail) setValue('emailOwner', domEmail);
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  }, [isOpen, setValue]);
 
   /* ------------------------------------------------------------------ */
   /* Helpers                                                             */
@@ -120,11 +135,22 @@ export function RestaurantModal({
   /* Submit                                                             */
   /* ------------------------------------------------------------------ */
   const handleFormSubmit = async (data: RestaurantFormData) => {
+    // garante captura de autofill caso use handleSubmit antes do delay
+    if (!data.emailOwner) {
+      const domEmail = (
+        document.querySelector('input[name="emailOwner"]') as HTMLInputElement
+      )?.value;
+      if (domEmail) {
+        data.emailOwner = domEmail;
+        setValue('emailOwner', domEmail);
+      }
+    }
+
     setEmailError('');
     clearErrors('emailOwner');
 
     try {
-      await onSubmit(data); // sucesso tratado pelo pai
+      await onSubmit(data); // sucesso será tratado pelo componente pai
     } catch (err: any) {
       console.error('Erro createRestaurant:', err);
 
@@ -142,7 +168,11 @@ export function RestaurantModal({
       }
 
       if (status === 409) {
-        const msg = /email/i.test(details) ? details : 'Email já cadastrado';
+        // fallback fixo se backend não enviar corpo
+        const msg =
+          details && details.trim().length > 0
+            ? details
+            : 'Email já cadastrado';
         setEmailError(msg);
         setError('emailOwner', { type: 'manual', message: msg });
       } else {
@@ -171,10 +201,7 @@ export function RestaurantModal({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 py-8">
-        <div
-          className="fixed inset-0 bg-gray-500/75"
-          onClick={closeModal}
-        />
+        <div className="fixed inset-0 bg-gray-500/75" onClick={closeModal} />
 
         <div className="relative bg-white rounded-xl shadow-xl max-w-4xl w-full">
           {/* ---------- Header ---------- */}
@@ -223,12 +250,11 @@ export function RestaurantModal({
                   <InputField
                     label="Email do Proprietário"
                     type="email"
+                    autoComplete="email"
                     placeholder="gerente@restaurante.com"
                     error={errors.emailOwner?.message || emailError}
                     inputClassName={
-                      emailError
-                        ? 'border-red-500 focus:ring-red-500'
-                        : ''
+                      emailError ? 'border-red-500 focus:ring-red-500' : ''
                     }
                     {...register('emailOwner', {
                       required: 'Email é obrigatório',
