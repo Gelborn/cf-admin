@@ -28,7 +28,7 @@ interface CepData {
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: RestaurantFormData) => Promise<any>; // devolve Promise
+  onSubmit: (data: RestaurantFormData) => Promise<any>;
   isLoading: boolean;
 }
 
@@ -66,11 +66,10 @@ export function RestaurantModal({
   const cepValue = watch('cep');
 
   /* ------------------------------------------------------------------ */
-  /* Sincronizar autofill (Chrome, Safari etc.)                          */
+  /* Autofill → sincroniza valor antes do primeiro submit                */
   /* ------------------------------------------------------------------ */
   useEffect(() => {
     if (isOpen) {
-      // pequeno delay p/ autofill executar
       const t = setTimeout(() => {
         const domEmail = (
           document.querySelector('input[name="emailOwner"]') as HTMLInputElement
@@ -85,7 +84,7 @@ export function RestaurantModal({
   /* Helpers                                                             */
   /* ------------------------------------------------------------------ */
   const formatCep = (value: string) =>
-    value.replace(/\D/g, '').slice(0, 8); // apenas números (8 dígitos)
+    value.replace(/\D/g, '').slice(0, 8);
 
   const closeModal = () => {
     reset();
@@ -108,12 +107,8 @@ export function RestaurantModal({
     try {
       const { data, error } = await supabase.functions.invoke<CepData>(
         'util_cep_info',
-        {
-          method: 'POST',
-          body: { cep: cepValue },
-        },
+        { method: 'POST', body: { cep: cepValue } },
       );
-
       if (error) throw error;
 
       if (data) {
@@ -135,7 +130,7 @@ export function RestaurantModal({
   /* Submit                                                             */
   /* ------------------------------------------------------------------ */
   const handleFormSubmit = async (data: RestaurantFormData) => {
-    // garante captura de autofill caso use handleSubmit antes do delay
+    // pega valor do autofill caso RHF ainda não tenha
     if (!data.emailOwner) {
       const domEmail = (
         document.querySelector('input[name="emailOwner"]') as HTMLInputElement
@@ -150,29 +145,40 @@ export function RestaurantModal({
     clearErrors('emailOwner');
 
     try {
-      await onSubmit(data); // sucesso será tratado pelo componente pai
+      await onSubmit(data);
+
     } catch (err: any) {
       console.error('Erro createRestaurant:', err);
 
-      /* ---- Extrai status e corpo se for FunctionsHttpError ---- */
-      let status  = err?.status ?? err?.code;
-      let details = err?.message ?? '';
+      /* ----------- extrai status e corpo de forma segura ----------- */
+      const resp =
+        err instanceof FunctionsHttpError ? err.context?.response : undefined;
 
-      if (err instanceof FunctionsHttpError && err.context?.response) {
-        status = err.context.response.status;
+      const status =
+        err?.status ?? err?.code ?? resp?.status ?? undefined;
+
+      let details = '';
+      if (resp) {
         try {
-          details = await err.context.response.text();
+          details = await resp.clone().text();
         } catch {
           /* ignore */
         }
+      } else if (err?.message) {
+        details = err.message;
       }
 
-      if (status === 409) {
-        setEmailError('Email já cadastrado');
-        setError('emailOwner', { type: 'manual', message: 'Email já cadastrado' });
+      const isDuplicate =
+        status === 409 ||
+        /e-?mail.+cadastrado|duplicate/i.test(details);
+
+      if (isDuplicate) {
+        const msg = 'Email já cadastrado';
+        setEmailError(msg);
+        setError('emailOwner', { type: 'manual', message: msg });
       } else {
         toast.error('Aconteceu um erro, tente novamente mais tarde.');
-        setEmailError(details || 'Erro inesperado');
+        setEmailError(''); // mantém campo limpo em outros erros
       }
     }
   };
@@ -182,7 +188,6 @@ export function RestaurantModal({
     setValue('cep', formatted);
     setCepError('');
     setCepSearched(false);
-    // limpa endereço quando CEP muda
     setValue('street', '');
     setValue('city', '');
     setValue('uf', '');
