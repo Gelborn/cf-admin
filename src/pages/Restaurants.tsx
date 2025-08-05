@@ -59,15 +59,13 @@ interface CreateRestaurantPayload {
 /* ------------------------------------------------------------------ */
 export function Restaurants() {
   const { session } = useAuth();
-  const queryClient = useQueryClient();
+  const qc = useQueryClient();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPartnershipModalOpen, setIsPartnershipModalOpen] = useState(false);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
 
-  /* ------------------------------- */
-  /* Query: lista de restaurantes    */
-  /* ------------------------------- */
+  /* ----------------------- Query: lista ----------------------- */
   const { data: restaurants, isLoading } = useQuery<RestaurantWithPartners[]>({
     queryKey: ['restaurants'],
     queryFn: async () => {
@@ -81,47 +79,50 @@ export function Restaurants() {
     },
   });
 
-  /* ------------------------------- */
-  /* Mutation: criar restaurante     */
-  /* ------------------------------- */
+  /* ---------------------- Mutation: create -------------------- */
   const createRestaurantMutation = useMutation({
-    mutationFn: async (restaurantData: CreateRestaurantPayload) => {
-      const { data, error } = await supabase.functions.invoke<{ id: string }>(
-        'cf_create_restaurant',
-        {
-          body: restaurantData,
-          headers: { Authorization: `Bearer ${session?.access_token}` },
-        },
-      );
+    mutationFn: async (payload: CreateRestaurantPayload) => {
+      try {
+        const { data } = await supabase.functions.invoke<{ id: string }>(
+          'cf_create_restaurant',
+          {
+            body: payload,
+            headers: { Authorization: `Bearer ${session?.access_token}` },
+          },
+        );
+        return data;
+      } catch (rawErr: any) {
+        /* normaliza erro */
+        const resp: Response | undefined =
+          rawErr?.response ?? rawErr?.context?.response;
 
-      if (error) throw error;
-      return data;
+        const status  = resp?.status ?? rawErr?.status ?? 500;
+        let   message = rawErr?.message ?? 'Erro desconhecido';
+
+        if (resp) {
+          try { message = await resp.text(); } catch {/* ignore */}
+        }
+        throw { status, message };
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['restaurants'] });
+      qc.invalidateQueries({ queryKey: ['restaurants'] });
       toast.success('Restaurante criado com sucesso!');
       setIsModalOpen(false);
     },
   });
 
-  /**
-   * Helper para passar ao modal – devolve a Promise para que
-   * ele possa await / capturar erros (409, etc.).
-   */
+  /* helper para o modal (async) */
   const handleCreateRestaurant = (data: CreateRestaurantPayload) =>
     createRestaurantMutation.mutateAsync(data);
 
-  /* ------------------------------- */
-  /* Abrir modal de nova parceria    */
-  /* ------------------------------- */
-  const handleOpenNewPartnership = (restaurantId: string) => {
-    setSelectedRestaurantId(restaurantId);
+  /* abrir modal de parceria */
+  const handleOpenNewPartnership = (id: string) => {
+    setSelectedRestaurantId(id);
     setIsPartnershipModalOpen(true);
   };
 
-  /* ------------------------------- */
-  /* Loading spinner global          */
-  /* ------------------------------- */
+  /* --------------------------- UI ----------------------------- */
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -130,59 +131,46 @@ export function Restaurants() {
     );
   }
 
-  /* ------------------------------------------------------------------ */
-  /* JSX principal                                                      */
-  /* ------------------------------------------------------------------ */
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* ---------- Header ---------- */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Restaurantes</h1>
-              <p className="mt-2 text-gray-600">
-                Gerencie os restaurantes parceiros da plataforma
-              </p>
-            </div>
-
-            <button
-              onClick={() => {
-                createRestaurantMutation.reset(); // limpa estado anterior
-                setIsModalOpen(true);
-              }}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Restaurante
-            </button>
+        {/* ---------- HEADER ---------- */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Restaurantes</h1>
+            <p className="mt-2 text-gray-600">
+              Gerencie os restaurantes parceiros da plataforma
+            </p>
           </div>
+          <button
+            onClick={() => {
+              createRestaurantMutation.reset();
+              setIsModalOpen(true);
+            }}
+            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Restaurante
+          </button>
         </div>
 
-        {/* ---------- Stats Cards ---------- */}
+        {/* ---------- STAT CARDS ---------- */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          {/* Total */}
           <StatCard
             icon={<Users className="h-8 w-8 text-green-600" />}
             label="Total de Restaurantes"
             value={restaurants?.length ?? 0}
           />
-
-          {/* Ativos */}
           <StatCard
             icon={<MapPin className="h-8 w-8 text-blue-600" />}
             label="Ativos"
             value={restaurants?.filter(r => r.status === 'active').length ?? 0}
           />
-
-          {/* Convites */}
           <StatCard
             icon={<Mail className="h-8 w-8 text-yellow-600" />}
             label="Convites Enviados"
             value={restaurants?.filter(r => r.status === 'invite_sent').length ?? 0}
           />
-
-          {/* Parcerias */}
           <StatCard
             icon={<Heart className="h-8 w-8 text-red-600" />}
             label="Total de Parcerias"
@@ -190,7 +178,7 @@ export function Restaurants() {
           />
         </div>
 
-        {/* ---------- Tabela ---------- */}
+        {/* ---------- TABLE ---------- */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Lista de Restaurantes</h2>
@@ -199,72 +187,58 @@ export function Restaurants() {
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
-                <tr>
-                  {['Restaurante', 'Contato', 'Endereço', 'Parcerias', 'Status', 'Ações'].map((h) => (
-                    <th
-                      key={h}
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
+                {['Restaurante', 'Contato', 'Endereço', 'Parcerias', 'Status', 'Ações'].map(h => (
+                  <th
+                    key={h}
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    {h}
+                  </th>
+                ))}
               </thead>
-
               <tbody className="bg-white divide-y divide-gray-200">
-                {restaurants?.map((restaurant) => (
-                  <tr key={restaurant.id} className="hover:bg-gray-50">
+                {restaurants?.map((r) => (
+                  <tr key={r.id} className="hover:bg-gray-50">
                     {/* Restaurante */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                            <Users className="h-5 w-5 text-blue-600" />
-                          </div>
+                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                          <Users className="h-5 w-5 text-blue-600" />
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {restaurant.name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            ID: {restaurant.id.slice(0, 8)}...
-                          </div>
+                          <div className="text-sm font-medium text-gray-900">{r.name}</div>
+                          <div className="text-sm text-gray-500">ID: {r.id.slice(0, 8)}...</div>
                         </div>
                       </div>
                     </td>
 
                     {/* Contato */}
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <ContactLine icon={Mail} value={restaurant.email} />
-                      {restaurant.phone && <ContactLine icon={Phone} value={restaurant.phone} />}
+                      <ContactLine icon={Mail} value={r.email} />
+                      {r.phone && <ContactLine icon={Phone} value={r.phone} />}
                     </td>
 
                     {/* Endereço */}
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <ContactLine
-                        icon={MapPin}
-                        value={`${restaurant.city}, ${restaurant.uf}`}
-                      />
+                      <ContactLine icon={MapPin} value={`${r.city}, ${r.uf}`} />
                       <div className="text-sm text-gray-500">
-                        {restaurant.street}, {restaurant.number}
+                        {r.street}, {r.number}
                       </div>
                     </td>
 
                     {/* Parcerias */}
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {restaurant.partners_list?.length ? (
+                      {r.partners_list?.length ? (
                         <div className="space-y-1 text-sm text-gray-900">
                           <div className="flex items-center">
                             <Building2 className="h-4 w-4 mr-2 text-blue-500" />
-                            <span className="font-medium">
-                              {restaurant.partners_list.length} parceria(s)
-                            </span>
+                            <span className="font-medium">{r.partners_list.length} parceria(s)</span>
                           </div>
-                          {restaurant.favorite_osc && (
+                          {r.favorite_osc && (
                             <div className="flex items-center">
                               <Heart className="h-3 w-3 mr-1 text-red-500 fill-current" />
                               <span className="text-xs text-gray-600">
-                                Favorita: {restaurant.favorite_osc.name}
+                                Favorita: {r.favorite_osc.name}
                               </span>
                             </div>
                           )}
@@ -276,14 +250,14 @@ export function Restaurants() {
 
                     {/* Status */}
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <StatusPill status={restaurant.status} />
+                      <StatusPill status={r.status} />
                     </td>
 
                     {/* Ações */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
-                        onClick={() => handleOpenNewPartnership(restaurant.id)}
-                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                        onClick={() => handleOpenNewPartnership(r.id)}
+                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
                       >
                         <Plus className="h-3 w-3 mr-1" />
                         Nova Parceria
@@ -305,7 +279,7 @@ export function Restaurants() {
         </div>
       </div>
 
-      {/* -------------------- Modais -------------------- */}
+      {/* ---------- MODAIS ---------- */}
       <RestaurantModal
         isOpen={isModalOpen}
         onClose={() => {
@@ -326,7 +300,7 @@ export function Restaurants() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Sub-componentes utilitários (mantém o main mais limpo)             */
+/* Sub-componentes utilitários                                         */
 /* ------------------------------------------------------------------ */
 const StatCard = ({
   icon,
@@ -387,7 +361,7 @@ const EmptyState = ({ onAdd }: { onAdd: () => void }) => (
     <div className="mt-6">
       <button
         onClick={onAdd}
-        className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
       >
         <Plus className="h-4 w-4 mr-2" />
         Novo Restaurante

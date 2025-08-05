@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'react-hot-toast';              // ➊ novo
 import { AuthProvider } from './hooks/useAuth';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
@@ -21,10 +22,14 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      {/* Toasts globais – sempre visíveis, acima de modais/overlays */}
+      <Toaster position="top-right" />                 {/* ➋ novo */}
+
       <AuthProvider>
         <Router basename="/">
           <Routes>
             <Route path="/login" element={<Login />} />
+
             <Route
               path="/"
               element={

@@ -134,42 +134,19 @@ export function RestaurantModal({
 
     try {
       await onSubmit(data);
-    } catch (err: unknown) {
-      /* ----------------------------------------------------------------
-         SUPABASE: FunctionsHttpError → response original em `error.response`
-      ------------------------------------------------------------------*/
-      let status: number | undefined;
-      let body   = '';
-    
-      if (typeof err === 'object' && err !== null) {
-        /* ① pega Response guardado pelo SDK */
-        const resp: Response | undefined = (err as any).response;
-        if (resp) {
-          status = resp.status;
-          try { body = await resp.clone().text(); } catch {/*ignore*/}
-        }
-    
-        /* ② fallback p/ message genérica */
-        if (!body && (err as any).message) body = (err as any).message;
-      }
-    
-      /* ----- LOG (agora deve mostrar 409) ----- */
-      console.error('❌ status=', status, 'body=', body);
-    
-      /* ----- Duplicado? ----- */
-      const duplicate =
-        status === 409 || /e-?mail.+cadastrado|duplicate/i.test(body);
-    
-      if (duplicate) {
+    } catch (err: any) {
+      /* err tem shape { status, message } lançado pela mutation */
+      const status  = err?.status;
+      const message = err?.message ?? 'Erro desconhecido';
+  
+      if (status === 409) {
         const msg = 'Email já cadastrado';
         setEmailError(msg);
         setError('emailOwner', { type: 'manual', message: msg });
       } else {
-        toast.error('Aconteceu um erro, tente novamente mais tarde.', {
-          style: { zIndex: 9999 },          // garante sobreposição ao modal
-        });
+        toast.error(message, { style: { zIndex: 9999 } });
       }
-    }      
+    }     
   };
 
   const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
