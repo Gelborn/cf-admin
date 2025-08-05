@@ -168,13 +168,8 @@ export function RestaurantModal({
       }
 
       if (status === 409) {
-        // fallback fixo se backend não enviar corpo
-        const msg =
-          details && details.trim().length > 0
-            ? details
-            : 'Email já cadastrado';
-        setEmailError(msg);
-        setError('emailOwner', { type: 'manual', message: msg });
+        setEmailError('Email já cadastrado');
+        setError('emailOwner', { type: 'manual', message: 'Email já cadastrado' });
       } else {
         toast.error('Aconteceu um erro, tente novamente mais tarde.');
         setEmailError(details || 'Erro inesperado');
