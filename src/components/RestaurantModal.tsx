@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { X, MapPin, Search, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -15,6 +15,12 @@ interface RestaurantFormData {
   uf?: string;
 }
 
+interface CepData {
+  street: string;
+  city: string;
+  uf: string;
+}
+
 interface RestaurantModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -25,7 +31,7 @@ interface RestaurantModalProps {
 export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: RestaurantModalProps) {
   const [step, setStep] = useState<'cep' | 'form'>('cep');
   const [cepLoading, setCepLoading] = useState(false);
-  const [cepData, setCepData] = useState<any>(null);
+  const [cepData, setCepData] = useState<CepData | null>(null);
   
   const {
     register,
@@ -41,7 +47,7 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Restau
   const fetchCepInfo = async (cep: string) => {
     setCepLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('util_cep_info', {
+      const { data, error } = await supabase.functions.invoke<CepData>('util_cep_info', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
         query: { cep },
@@ -58,7 +64,7 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Restau
         setStep('form');
         toast.success('CEP encontrado com sucesso!');
       }
-    } catch (error) {
+    } catch {
       toast.error('CEP não encontrado ou inválido');
     } finally {
       setCepLoading(false);

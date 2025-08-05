@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -38,34 +38,37 @@ export function OSCModal({ isOpen, onClose, onSubmit, isLoading }: OSCModalProps
 
   const cepValue = watch('cep');
 
+  const fetchCepInfo = useCallback(
+    async (cep: string) => {
+      setCepLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('util_cep_info', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          query: { cep },
+        });
+
+        if (error) throw error;
+
+        if (data) {
+          setValue('street', data.street);
+          setValue('city', data.city);
+          setValue('uf', data.uf);
+        }
+      } catch {
+        toast.error('Erro ao buscar informações do CEP');
+      } finally {
+        setCepLoading(false);
+      }
+    },
+    [setValue]
+  );
+
   useEffect(() => {
     if (cepValue && cepValue.length === 8) {
       fetchCepInfo(cepValue);
     }
-  }, [cepValue]);
-
-  const fetchCepInfo = async (cep: string) => {
-    setCepLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('util_cep_info', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        query: { cep },
-      });
-
-      if (error) throw error;
-
-      if (data) {
-        setValue('street', data.street);
-        setValue('city', data.city);
-        setValue('uf', data.uf);
-      }
-    } catch (error) {
-      toast.error('Erro ao buscar informações do CEP');
-    } finally {
-      setCepLoading(false);
-    }
-  };
+  }, [cepValue, fetchCepInfo]);
 
   const handleFormSubmit = (data: OSCFormData) => {
     onSubmit(data);

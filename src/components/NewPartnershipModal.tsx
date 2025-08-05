@@ -4,6 +4,7 @@ import { X, Search, MapPin, TrendingUp, TrendingDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import toast from 'react-hot-toast';
+import { FunctionsError } from '@supabase/supabase-js';
 
 interface OSCMatch {
   osc_id: string;
@@ -29,25 +30,32 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
   const [selectedOscs, setSelectedOscs] = useState<Set<string>>(new Set());
   const [favoriteOsc, setFavoriteOsc] = useState<string>('');
 
-  const { data: oscMatches, isLoading: isSearching, refetch: searchOscs } = useQuery({
+  const {
+    data: oscMatches,
+    isLoading: isSearching,
+    refetch: searchOscs,
+  } = useQuery<OSCMatch[], FunctionsError>({
     queryKey: ['osc-matches', restaurantId, radiusKm],
     queryFn: async () => {
       if (!restaurantId) return [];
-      
-      const { data, error } = await supabase.functions.invoke('cf_match_oscs', {
-        body: { restaurant_id: restaurantId, radius_km: radiusKm },
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-      });
-      
+
+      const { data, error } = await supabase.functions.invoke<OSCMatch[]>(
+        'cf_match_oscs',
+        {
+          body: { restaurant_id: restaurantId, radius_km: radiusKm },
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+        }
+      );
+
       if (error) throw error;
-      return data as OSCMatch[];
+      return data ?? [];
     },
     enabled: false, // Only run when explicitly called
   });
 
-  const createPartnershipsMutation = useMutation({
+  const createPartnershipsMutation = useMutation<void, FunctionsError, void>({
     mutationFn: async () => {
       if (!restaurantId) throw new Error('Restaurant ID is required');
 
@@ -77,7 +85,7 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
       toast.success('Parcerias criadas com sucesso!');
       handleClose();
     },
-    onError: (error: any) => {
+    onError: (error: FunctionsError) => {
       toast.error(error.message || 'Erro ao criar parcerias');
     },
   });

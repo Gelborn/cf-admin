@@ -32,7 +32,7 @@ export function Login() {
       if (error) {
         toast.error(error.message);
       }
-    } catch (error) {
+    } catch {
       toast.error('Erro ao fazer login');
     } finally {
       setIsLoading(false);
