@@ -73,9 +73,9 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props)
     
     try {
       const { data, error } = await supabase.functions.invoke<CepData>('util_cep_info', {
-        method: 'GET',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: { cep: cepValue },
+        body: JSON.stringify({ cep: cepValue }),
       });
 
       if (error) throw error;
