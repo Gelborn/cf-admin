@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, MapPin, Phone, Mail, Users } from 'lucide-react';
+import { Plus, MapPin, Phone, Mail, Users, Heart, Building2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
 import { RestaurantModal } from '../components/RestaurantModal';
-import { PartnershipsDrawer } from '../components/PartnershipsDrawer';
+import { NewPartnershipModal } from '../components/NewPartnershipModal';
+import toast from 'react-hot-toast';
 
-interface Restaurant {
+interface RestaurantWithPartners {
   id: string;
+  user_id: string;
   name: string;
   email: string;
   phone: string | null;
@@ -21,34 +24,52 @@ interface Restaurant {
   status: 'active' | 'inactive' | 'invite_sent';
   added_at: string;
   updated_at: string;
+  partners_list: { id: string; name: string }[] | null;
+  favorite_osc: { id: string; name: string } | null;
 }
 
 export function Restaurants() {
+  const { session } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isPartnershipsOpen, setIsPartnershipsOpen] = useState(false);
-  const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
+  const [isPartnershipModalOpen, setIsPartnershipModalOpen] = useState(false);
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: restaurants, isLoading } = useQuery({
+  const { data: restaurants, isLoading } = useQuery<RestaurantWithPartners[]>({
     queryKey: ['restaurants'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('restaurants')
+        .from('v_restaurants_partners')
         .select('*')
         .order('added_at', { ascending: false });
 
       if (error) throw error;
-      return data as Restaurant[];
+      return data as RestaurantWithPartners[];
     },
   });
 
+  interface CreateRestaurantPayload {
+    name: string;
+    emailOwner: string;
+    cep: string;
+    number: string;
+    street?: string;
+    city?: string;
+    uf?: string;
+    phone: string;
+  }
+
   const createRestaurantMutation = useMutation({
-    mutationFn: async (restaurantData: Omit<Restaurant, 'id' | 'added_at' | 'updated_at'>) => {
-      const { data, error } = await supabase
-        .from('restaurants')
-        .insert([restaurantData])
-        .select()
-        .single();
+    mutationFn: async (restaurantData: CreateRestaurantPayload) => {
+      const { data, error } = await supabase.functions.invoke<{ id: string }>(
+        'cf_create_restaurant',
+        {
+          body: restaurantData,
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+        }
+      );
 
       if (error) throw error;
       return data;
@@ -56,12 +77,22 @@ export function Restaurants() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['restaurants'] });
       setIsModalOpen(false);
+      toast.success('Restaurante criado com sucesso!');
+    },
+    onError: (error: any) => {
+      if (error.message?.includes('409')) {
+        toast.error('E-mail já cadastrado');
+      } else if (error.message?.includes('422')) {
+        toast.error('CEP inválido');
+      } else {
+        toast.error(error.message || 'Erro ao criar restaurante');
+      }
     },
   });
 
-  const handleOpenNewPartnership = (restaurant: Restaurant) => {
-    setSelectedRestaurant(restaurant);
-    setIsPartnershipsOpen(true);
+  const handleOpenNewPartnership = (restaurantId: string) => {
+    setSelectedRestaurantId(restaurantId);
+    setIsPartnershipModalOpen(true);
   };
 
   if (isLoading) {
@@ -95,7 +126,7 @@ export function Restaurants() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -137,6 +168,20 @@ export function Restaurants() {
               </div>
             </div>
           </div>
+
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <Heart className="h-8 w-8 text-red-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Total de Parcerias</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {restaurants?.reduce((acc, r) => acc + (r.partners_list?.length || 0), 0) || 0}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Restaurants Table */}
@@ -157,6 +202,9 @@ export function Restaurants() {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Endereço
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Parcerias
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
@@ -208,6 +256,28 @@ export function Restaurants() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {restaurant.partners_list && restaurant.partners_list.length > 0 ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center">
+                              <Building2 className="h-4 w-4 mr-2 text-blue-500" />
+                              <span className="font-medium">{restaurant.partners_list.length} parceria(s)</span>
+                            </div>
+                            {restaurant.favorite_osc && (
+                              <div className="flex items-center">
+                                <Heart className="h-3 w-3 mr-1 text-red-500 fill-current" />
+                                <span className="text-xs text-gray-600">
+                                  Favorita: {restaurant.favorite_osc.name}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">Nenhuma parceria</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         restaurant.status === 'active'
                           ? 'bg-green-100 text-green-800'
@@ -221,7 +291,7 @@ export function Restaurants() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
-                        onClick={() => handleOpenNewPartnership(restaurant)}
+                        onClick={() => handleOpenNewPartnership(restaurant.id)}
                         className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                       >
                         <Plus className="h-3 w-3 mr-1" />
@@ -263,10 +333,10 @@ export function Restaurants() {
         isLoading={createRestaurantMutation.isPending}
       />
 
-      <PartnershipsDrawer
-        isOpen={isPartnershipsOpen}
-        onClose={() => setIsPartnershipsOpen(false)}
-        restaurant={selectedRestaurant}
+      <NewPartnershipModal
+        isOpen={isPartnershipModalOpen}
+        onClose={() => setIsPartnershipModalOpen(false)}
+        restaurantId={selectedRestaurantId}
       />
     </div>
   );

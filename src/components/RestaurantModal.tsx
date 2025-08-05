@@ -83,6 +83,21 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props)
     else toast.error('Digite um CEP válido com 8 dígitos');
   };
 
+  const handleFormSubmit = (data: RestaurantFormData) => {
+    // Mapear os dados para o formato esperado pela API
+    const restaurantData = {
+      name: data.name,
+      emailOwner: data.emailOwner,
+      cep: data.cep,
+      number: data.number,
+      street: data.street,
+      city: data.city,
+      uf: data.uf,
+      phone: data.phone,
+    };
+    onSubmit(restaurantData);
+  };
+
   if (!isOpen) return null;
 
   /* ───── UI helpers ───── */
@@ -190,7 +205,7 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props)
             )}
 
             {step === 'form' && (
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
                 {/* endereço */}
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <div className="flex items-center mb-2">
