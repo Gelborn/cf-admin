@@ -57,10 +57,9 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props)
 
   // Função para formatar CEP (apenas números, preservando todos os dígitos)
   const formatCep = (value: string) => {
-    // Remove tudo que não é número
-    const numbers = value.replace(/\D/g, '');
-    // Limita a 8 dígitos
-    return numbers.slice(0, 8);
+    // Remove tudo que não é número e limita a 8 dígitos
+    const numbers = value.replace(/\D/g, '').slice(0, 8);
+    return numbers;
   };
 
   const fetchCepInfo = useCallback(async () => {
@@ -113,7 +112,7 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props)
 
   const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatCep(e.target.value);
-    e.target.value = formatted;
+    setValue('cep', formatted);
     setCepError('');
     setCepSearched(false);
     // Limpa os campos de endereço quando CEP muda
@@ -232,8 +231,8 @@ export function RestaurantModal({ isOpen, onClose, onSubmit, isLoading }: Props)
                       <div className="flex-1">
                         <input
                           type="text"
-                          maxLength={8}
                           placeholder="00000000"
+                          value={cepValue || ''}
                           className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-colors ${
                             cepError 
                               ? 'border-red-500 focus:ring-red-500' 
