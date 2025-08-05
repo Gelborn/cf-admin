@@ -58,27 +58,34 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
   const createPartnershipsMutation = useMutation<void, FunctionsError, void>({
     mutationFn: async () => {
       if (!restaurantId) throw new Error('Restaurant ID is required');
+      const headers = {
+        Authorization: `Bearer ${session?.access_token}`,
+      };
 
-      // Create regular partnerships first
-      for (const oscId of selectedOscs) {
-        if (oscId !== favoriteOsc) {
-          await supabase.functions.invoke('cf_create_partnership', {
-            body: { restaurant_id: restaurantId, osc_id: oscId, is_favorite: false },
-            headers: {
-              Authorization: `Bearer ${session?.access_token}`,
+      const requests = Array.from(selectedOscs).map((oscId) =>
+        supabase.functions
+          .invoke('cf_create_partnership', {
+            body: {
+              restaurant_id: restaurantId,
+              osc_id: oscId,
+              is_favorite: oscId === favoriteOsc,
             },
-          });
-        }
-      }
+            headers,
+          })
+          .then(({ error }) => {
+            if (error) throw error;
+          })
+      );
 
-      // Create favorite partnership last (if selected)
-      if (favoriteOsc && selectedOscs.has(favoriteOsc)) {
-        await supabase.functions.invoke('cf_create_partnership', {
-          body: { restaurant_id: restaurantId, osc_id: favoriteOsc, is_favorite: true },
-          headers: {
-            Authorization: `Bearer ${session?.access_token}`,
-          },
-        });
+      const results = await Promise.allSettled(requests);
+      const errors = results.filter(
+        (result): result is PromiseRejectedResult => result.status === 'rejected'
+      );
+
+      if (errors.length > 0) {
+        throw new Error(
+          errors.map((e) => e.reason?.message || e.reason || '').join('; ')
+        );
       }
     },
     onSuccess: () => {
