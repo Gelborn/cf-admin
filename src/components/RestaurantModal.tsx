@@ -135,43 +135,41 @@ export function RestaurantModal({
     try {
       await onSubmit(data);
     } catch (err: unknown) {
-      /* ----------- SUPABASE FUNCTIONS ERROR ----------- */
+      /* ----------------------------------------------------------------
+         SUPABASE: FunctionsHttpError → response original em `error.response`
+      ------------------------------------------------------------------*/
       let status: number | undefined;
       let body   = '';
-  
+    
       if (typeof err === 'object' && err !== null) {
-        // Supabase coloca o response bruto aqui ↓ (não-enumerável)
-        const resp = (err as any).response as Response | undefined;
+        /* ① pega Response guardado pelo SDK */
+        const resp: Response | undefined = (err as any).response;
         if (resp) {
           status = resp.status;
-          try {
-            body = await resp.clone().text();
-          } catch {/* ignore */}
-        } else {
-          // fallback – message padrão do SDK
-          body = (err as any).message ?? '';
+          try { body = await resp.clone().text(); } catch {/*ignore*/}
         }
+    
+        /* ② fallback p/ message genérica */
+        if (!body && (err as any).message) body = (err as any).message;
       }
-  
-      /* ----------- LOG para ver no DevTools ----------- */
-      console.error('❌ status=', status, 'body=', body, err);
-  
-      /* ----------- DUPLICIDADE ------------------------ */
+    
+      /* ----- LOG (agora deve mostrar 409) ----- */
+      console.error('❌ status=', status, 'body=', body);
+    
+      /* ----- Duplicado? ----- */
       const duplicate =
-        status === 409 ||
-        /e-?mail.+cadastrado|duplicate/i.test(body);
-  
+        status === 409 || /e-?mail.+cadastrado|duplicate/i.test(body);
+    
       if (duplicate) {
         const msg = 'Email já cadastrado';
         setEmailError(msg);
         setError('emailOwner', { type: 'manual', message: msg });
       } else {
-        /* -- toast isolado (z-index muito alto) -- */
         toast.error('Aconteceu um erro, tente novamente mais tarde.', {
-          style: { zIndex: 9999 },
+          style: { zIndex: 9999 },          // garante sobreposição ao modal
         });
       }
-    }  
+    }      
   };
 
   const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
