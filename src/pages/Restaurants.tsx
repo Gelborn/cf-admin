@@ -93,15 +93,12 @@ export function Restaurants() {
     
         /* ➊ se a Edge Function devolveu erro (status 4xx/5xx) */
         if (error) {
+          // log error
+          console.log('error', error);
           throw { status: error.status ?? 500, message: error.message };
         }
-    
-        /* ➋ data null → algo deu errado mesmo sem `error` */
-        if (!data) {
-          throw { status: 500, message: 'Função não retornou dados.' };
-        }
-    
-        return data;                    // ✅ sucesso real
+
+        return data;
     
       } catch (rawErr: any) {
         /* ➌ converte FunctionsHttpError (ou qualquer outro) */
