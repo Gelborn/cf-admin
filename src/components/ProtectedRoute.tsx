@@ -9,7 +9,8 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading, isCfUser } = useAuth();
 
-  if (loading) {
+  // 👉 enquanto qualquer coisa ainda está sendo resolvida
+  if (loading || isCfUser === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
@@ -17,7 +18,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  if (!user || isCfUser === false || isCfUser === null) {
+  // 👉 terminou de carregar, mas não está autenticado ou não é CF
+  if (!user || isCfUser === false) {
     return <Navigate to="/login" replace />;
   }
 
