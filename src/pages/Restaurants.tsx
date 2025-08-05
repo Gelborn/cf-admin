@@ -83,33 +83,40 @@ export function Restaurants() {
   const createRestaurantMutation = useMutation({
     mutationFn: async (payload: CreateRestaurantPayload) => {
       try {
-        const { data } = await supabase.functions.invoke<{ id: string }>(
+        const { data, error } = await supabase.functions.invoke<{ id: string }>(
           'cf_create_restaurant',
           {
             body: payload,
             headers: { Authorization: `Bearer ${session?.access_token}` },
           },
         );
-        return data;
+    
+        /* ➊ se a Edge Function devolveu erro (status 4xx/5xx) */
+        if (error) {
+          throw { status: error.status ?? 500, message: error.message };
+        }
+    
+        /* ➋ data null → algo deu errado mesmo sem `error` */
+        if (!data) {
+          throw { status: 500, message: 'Função não retornou dados.' };
+        }
+    
+        return data;                    // ✅ sucesso real
+    
       } catch (rawErr: any) {
-        /* normaliza erro */
+        /* ➌ converte FunctionsHttpError (ou qualquer outro) */
         const resp: Response | undefined =
           rawErr?.response ?? rawErr?.context?.response;
-
+    
         const status  = resp?.status ?? rawErr?.status ?? 500;
         let   message = rawErr?.message ?? 'Erro desconhecido';
-
+    
         if (resp) {
           try { message = await resp.text(); } catch {/* ignore */}
         }
         throw { status, message };
       }
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['restaurants'] });
-      toast.success('Restaurante criado com sucesso!');
-      setIsModalOpen(false);
-    },
+    },    
   });
 
   /* helper para o modal (async) */
