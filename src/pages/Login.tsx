@@ -52,12 +52,9 @@ export function Login() {
           <div className="absolute inset-0 bg-black bg-opacity-40"></div>
         </div>
         <div className="relative z-10 flex flex-col justify-center px-12 text-white">
-          <h1 className="text-4xl font-bold mb-4">
-            Conectando restaurantes e organizações sociais
+          <h1 className="text-6xl font-bold">
+            Plataforma Admin
           </h1>
-          <p className="text-xl opacity-90">
-            Transformando excedentes em esperança
-          </p>
         </div>
       </div>
 
