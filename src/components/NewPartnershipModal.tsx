@@ -308,22 +308,318 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                   </div>
                 ) : currentPartnerships && currentPartnerships.length > 0 ? (
-                  <div className="grid gap-4">
+                  <div className="grid gap-6 md:grid-cols-2">
                     {currentPartnerships.map((partnership) => (
-                      <div
+                      <div 
                         key={partnership.osc_id}
-                        className="bg-gray-50 rounded-lg p-4 flex items-center justify-between hover:bg-gray-100 transition-colors"
+                        className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all duration-200"
                       >
-                        <div className="flex items-center space-x-4">
-                          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                            <Building2 className="w-5 h-5 text-green-600" />
-                          </div>
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              <h4 className="font-medium text-gray-900">{partnership.osc_name}</h4>
-                              {partnership.is_favorite && (
-                                <Heart className="w-4 h-4 text-red-500 fill-current" />
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start space-x-4 flex-1">
+                            <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center flex-shrink-0">
+                              <Building2 className="w-6 h-6 text-green-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <h4 className="font-semibold text-gray-900 text-lg truncate">{partnership.osc_name}</h4>
+                                {partnership.is_favorite && (
+                                  <div className="flex items-center space-x-1 bg-red-50 px-2 py-1 rounded-full">
+                                    <Heart className="w-3 h-3 text-red-500 fill-current" />
+                                    <span className="text-xs font-medium text-red-600">Favorita</span>
+                                  </div>
+                                )}
+                              </div>
+                              {partnership.city && partnership.uf && (
+                                <div className="flex items-center text-gray-600 mb-2">
+                                  <MapPin className="w-4 h-4 mr-2 text-gray-400" />
+                                  <span className="text-sm">{partnership.city}, {partnership.uf}</span>
+                                </div>
                               )}
+                              <div className="flex items-center text-gray-500">
+                                <div className="w-4 h-4 mr-2 bg-blue-100 rounded-full flex items-center justify-center">
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                </div>
+                                <span className="text-xs">
+                                  Parceria desde {new Date(partnership.created_at).toLocaleDateString('pt-BR', {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    year: 'numeric'
+                                  })}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex flex-col space-y-2 ml-4">
+                            <button
+                              onClick={() => toggleFavoriteMutation.mutate({
+                                oscId: partnership.osc_id,
+                                isFavorite: !partnership.is_favorite
+                              })}
+                              disabled={toggleFavoriteMutation.isPending}
+                              className={`p-2 rounded-lg transition-all duration-200 ${
+                                partnership.is_favorite
+                                  ? 'bg-red-100 text-red-600 hover:bg-red-200'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-yellow-100 hover:text-yellow-600'
+                              }`}
+                              title={partnership.is_favorite ? 'Remover dos favoritos' : 'Marcar como favorita'}
+                            >
+                              <Heart className={`w-4 h-4 ${partnership.is_favorite ? 'fill-current' : ''}`} />
+                            </button>
+                            <button
+                              onClick={() => removePartnershipMutation.mutate(partnership.osc_id)}
+                              disabled={removePartnershipMutation.isPending}
+                              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-all duration-200 disabled:opacity-50"
+                              title="Remover parceria"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-16">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Building2 className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma parceria ativa</h3>
+                    <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+                      Este restaurante ainda não possui parcerias com OSCs. Comece buscando organizações próximas.
+                    </p>
+                    <button
+                      onClick={() => setView('search')}
+                      className="inline-flex items-center px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <Search className="w-4 h-4 mr-2" />
+                      Buscar Parcerias
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {view === 'search' && (
+              <div className="space-y-6">
+                {/* Search Controls */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Search className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 mb-2">Buscar Novas Parcerias</h4>
+                      <p className="text-gray-600 text-sm mb-4">
+                        Defina a distância máxima para buscarmos OSCs disponíveis para parcerias com este restaurante.
+                      </p>
+                      <div className="flex items-center space-x-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Raio de busca (km)
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="50"
+                            value={radiusKm}
+                            onChange={(e) => setRadiusKm(Number(e.target.value))}
+                            className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                        <div className="pt-6">
+                          <button
+                            onClick={handleSearch}
+                            disabled={isSearching}
+                            className="inline-flex items-center px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                          >
+                            <Search className="w-4 h-4 mr-2" />
+                            {isSearching ? 'Buscando...' : 'Buscar OSCs'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Results */}
+                {oscMatches && oscMatches.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold text-gray-900 text-lg">
+                        OSCs encontradas ({oscMatches.filter(osc => !currentPartnerships?.some(p => p.osc_id === osc.osc_id)).length} disponíveis)
+                      </h4>
+                      <div className="text-sm text-gray-500">
+                        {currentPartnerships?.length || 0} já são parceiras
+                      </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Selecionar
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Nome
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Distância
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Aceites 30d
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Negações 30d
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Score
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Status
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {oscMatches.map((osc) => {
+                            const isAlreadyPartner = currentPartnerships?.some(p => p.osc_id === osc.osc_id);
+                            return (
+                              <tr key={osc.osc_id} className={`${isAlreadyPartner ? 'bg-gray-50' : 'hover:bg-gray-50'}`}>
+                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                  {isAlreadyPartner ? (
+                                    <div className="w-4 h-4 bg-green-100 rounded-full flex items-center justify-center">
+                                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                    </div>
+                                  ) : (
+                                    <input
+                                      type="radio"
+                                      name="selectedOsc"
+                                      checked={selectedOsc === osc.osc_id}
+                                      onChange={() => handleOscSelect(osc.osc_id)}
+                                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                    />
+                                  )}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-900">
+                                      {osc.osc_name}
+                                    </div>
+                                    {osc.city && osc.uf && (
+                                      <div className="text-sm text-gray-500 flex items-center">
+                                        <MapPin className="w-3 h-3 mr-1" />
+                                        {osc.city}, {osc.uf}
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {osc.distance_km.toFixed(1)} km
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  <div className="flex items-center">
+                                    <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
+                                    {osc.accepted_30}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  <div className="flex items-center">
+                                    <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
+                                    {osc.denied_30}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    {osc.score.toFixed(1)}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  {isAlreadyPartner ? (
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></div>
+                                      Já é parceira
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                      <div className="w-1.5 h-1.5 bg-gray-500 rounded-full mr-1.5"></div>
+                                      Disponível
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : oscMatches && oscMatches.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Search className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma OSC encontrada</h3>
+                    <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+                      Não encontramos OSCs disponíveis neste raio. Tente aumentar a distância de busca.
+                    </p>
+                    <button
+                      onClick={() => setRadiusKm(Math.min(radiusKm + 5, 50))}
+                      className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                    >
+                      Aumentar raio para {Math.min(radiusKm + 5, 50)}km
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          {view === 'search' && selectedOsc && (
+            <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
+              <div className="flex justify-between items-center">
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-600">
+                    OSC selecionada: <span className="font-medium">{oscMatches?.find(o => o.osc_id === selectedOsc)?.osc_name}</span>
+                  </p>
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="favorite"
+                      checked={isFavorite}
+                      onChange={(e) => handleFavoriteChange(e.target.checked)}
+                      className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="favorite" className="ml-2 text-sm text-gray-700">
+                      Marcar como favorita
+                    </label>
+                  </div>
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => {
+                      setSelectedOsc('');
+                      setIsFavorite(false);
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={createPartnershipMutation.isPending || !selectedOsc}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {createPartnershipMutation.isPending ? 'Criando...' : 'Criar Parceria'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
                             </div>
                             {partnership.city && partnership.uf && (
                               <p className="text-sm text-gray-500 flex items-center">
