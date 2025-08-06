@@ -49,7 +49,7 @@ export function Login() {
             backgroundImage: 'url("https://images.pexels.com/photos/6646918/pexels-photo-6646918.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2")'
           }}
         >
-          <div className="absolute inset-0 bg-orange-600 bg-opacity-50"></div>
+          <div className="absolute inset-0 bg-orange-800 bg-opacity-60"></div>
         </div>
         <div className="relative z-10 flex flex-col justify-center px-12 text-white">
           <h1 className="text-6xl font-bold">
@@ -63,14 +63,18 @@ export function Login() {
 
       {/* Right side - Login form */}
       <div className="w-full lg:w-2/5 flex items-center justify-center px-8 py-12">
+        {/* Logo no canto superior direito */}
+        <div className="absolute top-6 right-8">
+          <img 
+            src="https://connectingfood.com/wp-content/uploads/2023/05/logo-CF.png" 
+            alt="Connecting Food" 
+            className="h-8 w-auto"
+          />
+        </div>
+        
         <div className="w-full max-w-md">
-          {/* Logo */}
-          <div className="flex flex-col items-center mb-8">
-            <img 
-              src="https://connectingfood.com/wp-content/uploads/2023/05/logo-CF.png" 
-              alt="Connecting Food" 
-              className="h-12 w-auto mb-6"
-            />
+          {/* Título */}
+          <div className="flex flex-col items-center mb-8 mt-16">
             <h2 className="text-3xl font-bold text-gray-900 mb-2">
               Plataforma Admin
             </h2>
