@@ -49,12 +49,15 @@ export function Login() {
             backgroundImage: 'url("https://images.pexels.com/photos/6646918/pexels-photo-6646918.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2")'
           }}
         >
-          <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+          <div className="absolute inset-0 bg-orange-600 bg-opacity-50"></div>
         </div>
         <div className="relative z-10 flex flex-col justify-center px-12 text-white">
           <h1 className="text-6xl font-bold">
-            Plataforma Admin
+            Conectando restaurantes e organizações sociais
           </h1>
+          <p className="text-xl mt-4 text-orange-100">
+            Transformando excedentes em esperança
+          </p>
         </div>
       </div>
 
@@ -69,7 +72,7 @@ export function Login() {
               className="h-12 w-auto mb-6"
             />
             <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              Bem-vindo de volta
+              Plataforma Admin
             </h2>
             <p className="text-gray-600">
               Digite seu email e senha para continuar
