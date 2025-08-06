@@ -45,8 +45,8 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
   const queryClient = useQueryClient();
   const [view, setView] = useState<'manage' | 'search'>('manage');
   const [radiusKm, setRadiusKm] = useState(5);
-  const [selectedOscs, setSelectedOscs] = useState<Set<string>>(new Set());
-  const [favoriteOsc, setFavoriteOsc] = useState<string>('');
+  const [selectedOsc, setSelectedOsc] = useState<string>('');
+  const [isFavorite, setIsFavorite] = useState(false);
 
   // Buscar dados do restaurante
   const { data: restaurant } = useQuery<Restaurant>({
@@ -128,50 +128,34 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
   });
 
   // Criar múltiplas parcerias
-  const createPartnershipsMutation = useMutation<void, FunctionsError, void>({
+  const createPartnershipMutation = useMutation<any, FunctionsError, void>({
     mutationFn: async () => {
-      if (!restaurantId) throw new Error('Restaurant ID is required');
+      if (!restaurantId || !selectedOsc) throw new Error('Restaurant ID and OSC are required');
       
-      const headers = {
-        Authorization: `Bearer ${session?.access_token}`,
-      };
-
-      const requests = Array.from(selectedOscs).map((oscId) =>
-        supabase.functions
-          .invoke('cf_create_partnership', {
-            body: {
-              restaurant_id: restaurantId,
-              osc_id: oscId,
-              is_favorite: oscId === favoriteOsc,
-            },
-            headers,
-          })
-          .then(({ error }) => {
-            if (error) throw error;
-          })
-      );
-
-      const results = await Promise.allSettled(requests);
-      const errors = results.filter(
-        (result): result is PromiseRejectedResult => result.status === 'rejected'
-      );
-
-      if (errors.length > 0) {
-        throw new Error(
-          errors.map((e) => e.reason?.message || e.reason || '').join('; ')
-        );
-      }
+      const { data, error } = await supabase.functions.invoke('cf_create_partnership', {
+        body: {
+          restaurant_id: restaurantId,
+          osc_id: selectedOsc,
+          is_favorite: isFavorite,
+        },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+      });
+      
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['partnerships', restaurantId] });
       queryClient.invalidateQueries({ queryKey: ['restaurants'] }); // Atualiza tabela principal
-      toast.success('Parcerias criadas com sucesso!');
+      toast.success('Parceria criada com sucesso!');
       setView('manage');
-      setSelectedOscs(new Set());
-      setFavoriteOsc('');
+      setSelectedOsc('');
+      setIsFavorite(false);
     },
     onError: (error: FunctionsError) => {
-      toast.error(error.message || 'Erro ao criar parcerias');
+      toast.error(error.message || 'Erro ao criar parceria');
     },
   });
 
@@ -230,40 +214,28 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
     searchOscs();
   };
 
-  const handleOscToggle = (oscId: string) => {
-    const newSelected = new Set(selectedOscs);
-    if (newSelected.has(oscId)) {
-      newSelected.delete(oscId);
-      if (favoriteOsc === oscId) {
-        setFavoriteOsc('');
-      }
-    } else {
-      newSelected.add(oscId);
-    }
-    setSelectedOscs(newSelected);
+  const handleOscSelect = (oscId: string) => {
+    setSelectedOsc(oscId === selectedOsc ? '' : oscId);
   };
 
-  const handleFavoriteChange = (oscId: string) => {
-    setFavoriteOsc(oscId);
-    if (!selectedOscs.has(oscId)) {
-      setSelectedOscs(new Set([...selectedOscs, oscId]));
-    }
+  const handleFavoriteChange = (checked: boolean) => {
+    setIsFavorite(checked);
   };
 
   const handleClose = () => {
     setView('manage');
     setRadiusKm(5);
-    setSelectedOscs(new Set());
-    setFavoriteOsc('');
+    setSelectedOsc('');
+    setIsFavorite(false);
     onClose();
   };
 
   const handleSave = () => {
-    if (selectedOscs.size === 0) {
-      toast.error('Selecione pelo menos uma OSC');
+    if (!selectedOsc) {
+      toast.error('Selecione uma OSC');
       return;
     }
-    createPartnershipsMutation.mutate();
+    createPartnershipMutation.mutate();
   };
 
   if (!isOpen) return null;
@@ -454,9 +426,6 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
                         <thead className="bg-gray-50">
                           <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Favorita
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Selecionar
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -482,17 +451,9 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
                               <td className="px-6 py-4 whitespace-nowrap text-center">
                                 <input
                                   type="radio"
-                                  name="favorite"
-                                  checked={favoriteOsc === osc.osc_id}
-                                  onChange={() => handleFavoriteChange(osc.osc_id)}
-                                  className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300"
-                                />
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedOscs.has(osc.osc_id)}
-                                  onChange={() => handleOscToggle(osc.osc_id)}
+                                  name="selectedOsc"
+                                  checked={selectedOsc === osc.osc_id}
+                                  onChange={() => handleOscSelect(osc.osc_id)}
                                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                 />
                               </td>
@@ -549,12 +510,26 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
           </div>
 
           {/* Footer */}
-          {view === 'search' && oscMatches && oscMatches.length > 0 && (
+          {view === 'search' && selectedOsc && (
             <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-600">
-                  {selectedOscs.size} OSC(s) selecionada(s)
-                </p>
+              <div className="flex justify-between items-center space-y-3">
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-600">
+                    OSC selecionada: <span className="font-medium">{oscMatches?.find(o => o.osc_id === selectedOsc)?.osc_name}</span>
+                  </p>
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="favorite"
+                      checked={isFavorite}
+                      onChange={(e) => handleFavoriteChange(e.target.checked)}
+                      className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="favorite" className="ml-2 text-sm text-gray-700">
+                      Marcar como favorita
+                    </label>
+                  </div>
+                </div>
                 <div className="flex space-x-3">
                   <button
                     onClick={() => setView('manage')}
@@ -564,10 +539,10 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
                   </button>
                   <button
                     onClick={handleSave}
-                    disabled={createPartnershipsMutation.isPending || selectedOscs.size === 0}
+                    disabled={createPartnershipMutation.isPending || !selectedOsc}
                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    {createPartnershipsMutation.isPending ? 'Salvando...' : `Criar ${selectedOscs.size} Parceria(s)`}
+                    {createPartnershipMutation.isPending ? 'Criando...' : 'Criar Parceria'}
                   </button>
                 </div>
               </div>
