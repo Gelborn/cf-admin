@@ -12,6 +12,7 @@ import {
   Users,
   Heart,
   Building2,
+  Search,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -64,6 +65,7 @@ export function Restaurants() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPartnershipModalOpen, setIsPartnershipModalOpen] = useState(false);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   /* ----------------------- Query: lista ----------------------- */
   const { data: restaurants, isLoading } = useQuery<RestaurantWithPartners[]>({
@@ -129,6 +131,13 @@ export function Restaurants() {
     setIsPartnershipModalOpen(true);
   };
 
+  /* filtrar restaurantes por busca */
+  const filteredRestaurants = restaurants?.filter(restaurant =>
+    restaurant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    restaurant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    restaurant.city?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   /* --------------------------- UI ----------------------------- */
   if (isLoading) {
     return (
@@ -139,8 +148,8 @@ export function Restaurants() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-full mx-auto">
         {/* ---------- HEADER ---------- */}
         <div className="flex justify-between items-center mb-8">
           <div>
@@ -166,75 +175,93 @@ export function Restaurants() {
           <StatCard
             icon={<Users className="h-8 w-8 text-green-600" />}
             label="Total de Restaurantes"
-            value={restaurants?.length ?? 0}
+            value={filteredRestaurants?.length ?? 0}
           />
           <StatCard
             icon={<MapPin className="h-8 w-8 text-blue-600" />}
             label="Ativos"
-            value={restaurants?.filter(r => r.status === 'active').length ?? 0}
+            value={filteredRestaurants?.filter(r => r.status === 'active').length ?? 0}
           />
           <StatCard
             icon={<Mail className="h-8 w-8 text-yellow-600" />}
             label="Convites Enviados"
-            value={restaurants?.filter(r => r.status === 'invite_sent').length ?? 0}
+            value={filteredRestaurants?.filter(r => r.status === 'invite_sent').length ?? 0}
           />
           <StatCard
             icon={<Heart className="h-8 w-8 text-red-600" />}
             label="Total de Parcerias"
-            value={restaurants?.reduce((acc, r) => acc + (r.partners_list?.length || 0), 0) ?? 0}
+            value={filteredRestaurants?.reduce((acc, r) => acc + (r.partners_list?.length || 0), 0) ?? 0}
           />
         </div>
 
         {/* ---------- TABLE ---------- */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h2 className="text-lg font-semibold text-gray-900">Lista de Restaurantes</h2>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Buscar por nome, email ou cidade..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-80 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+          <div>
+            <table className="w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
-                {['Restaurante', 'Contato', 'Endereço', 'Parcerias', 'Status', 'Ações'].map(h => (
+                {['Restaurante & Contato', 'Endereço', 'Parcerias', 'Status', 'Ações'].map(h => (
                   <th
                     key={h}
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
                     {h}
                   </th>
                 ))}
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {restaurants?.map((r) => (
+                {filteredRestaurants?.map((r) => (
                   <tr key={r.id} className="hover:bg-gray-50">
-                    {/* Restaurante */}
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    {/* Restaurante & Contato */}
+                    <td className="px-6 py-6">
                       <div className="flex items-center">
                         <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
                           <Users className="h-5 w-5 text-blue-600" />
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{r.name}</div>
-                          <div className="text-sm text-gray-500">ID: {r.id.slice(0, 8)}...</div>
+                          <div className="mt-1 space-y-1">
+                            <div className="flex items-center text-sm text-gray-600">
+                              <Mail className="h-3 w-3 mr-2 text-gray-400" />
+                              {r.email}
+                            </div>
+                            {r.phone && (
+                              <div className="flex items-center text-sm text-gray-600">
+                                <Phone className="h-3 w-3 mr-2 text-gray-400" />
+                                {r.phone}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
 
-                    {/* Contato */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <ContactLine icon={Mail} value={r.email} />
-                      {r.phone && <ContactLine icon={Phone} value={r.phone} />}
-                    </td>
-
                     {/* Endereço */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <ContactLine icon={MapPin} value={`${r.city}, ${r.uf}`} />
-                      <div className="text-sm text-gray-500">
-                        {r.street}, {r.number}
+                    <td className="px-6 py-6">
+                      <div className="flex items-center text-sm text-gray-900 mb-1">
+                        <MapPin className="h-4 w-4 mr-2 text-gray-400" />
+                        {r.city}, {r.uf}
+                      </div>
+                      <div className="text-sm text-gray-500 ml-6">
+                        {r.street}, {r.number} • CEP: {r.cep}
                       </div>
                     </td>
 
                     {/* Parcerias */}
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-6">
                       {r.partners_list?.length ? (
                         <div className="space-y-1 text-sm text-gray-900">
                           <div className="flex items-center">
@@ -256,12 +283,12 @@ export function Restaurants() {
                     </td>
 
                     {/* Status */}
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-6">
                       <StatusPill status={r.status} />
                     </td>
 
                     {/* Ações */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-6 py-6 text-sm font-medium">
                       <button
                         onClick={() => handleOpenNewPartnership(r.id)}
                         className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
@@ -277,11 +304,29 @@ export function Restaurants() {
           </div>
 
           {/* Empty state */}
-          {(!restaurants || restaurants.length === 0) && (
+          {(!filteredRestaurants || filteredRestaurants.length === 0) && (
+            searchTerm ? (
+              <div className="text-center py-12">
+                <Search className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum resultado encontrado</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Tente buscar com outros termos ou limpe o filtro.
+                </p>
+                <div className="mt-6">
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
+                  >
+                    Limpar busca
+                  </button>
+                </div>
+              </div>
+            ) : (
             <EmptyState onAdd={() => {
               createRestaurantMutation.reset();
               setIsModalOpen(true);
             }} />
+            )
           )}
         </div>
       </div>
@@ -326,19 +371,6 @@ const StatCard = ({
         <p className="text-2xl font-bold text-gray-900">{value}</p>
       </div>
     </div>
-  </div>
-);
-
-const ContactLine = ({
-  icon: Icon,
-  value,
-}: {
-  icon: typeof Mail;
-  value: string;
-}) => (
-  <div className="text-sm text-gray-900 flex items-center">
-    <Icon className="h-4 w-4 mr-2 text-gray-400" />
-    {value}
   </div>
 );
 
