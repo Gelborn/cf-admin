@@ -127,7 +127,85 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
     enabled: false,
   });
 
-  // Remover parceria
+  // Criar múltiplas parcerias
+  const createPartnershipsMutation = useMutation<void, FunctionsError, void>({
+    mutationFn: async () => {
+      if (!restaurantId) throw new Error('Restaurant ID is required');
+      
+      const headers = {
+        Authorization: `Bearer ${session?.access_token}`,
+      };
+
+      const requests = Array.from(selectedOscs).map((oscId) =>
+        supabase.functions
+          .invoke('cf_create_partnership', {
+            body: {
+              restaurant_id: restaurantId,
+              osc_id: oscId,
+              is_favorite: oscId === favoriteOsc,
+            },
+            headers,
+          })
+          .then(({ error }) => {
+            if (error) throw error;
+          })
+      );
+
+      const results = await Promise.allSettled(requests);
+      const errors = results.filter(
+        (result): result is PromiseRejectedResult => result.status === 'rejected'
+      );
+
+      if (errors.length > 0) {
+        throw new Error(
+          errors.map((e) => e.reason?.message || e.reason || '').join('; ')
+        );
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['partnerships', restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ['restaurants'] }); // Atualiza tabela principal
+      toast.success('Parcerias criadas com sucesso!');
+      setView('manage');
+      setSelectedOscs(new Set());
+      setFavoriteOsc('');
+    },
+    onError: (error: FunctionsError) => {
+      toast.error(error.message || 'Erro ao criar parcerias');
+    },
+  });
+
+  // Alterar favorita
+  const toggleFavoriteMutation = useMutation({
+    mutationFn: async ({ oscId, isFavorite }: { oscId: string; isFavorite: boolean }) => {
+      // Primeiro, remove favorita de todas as outras
+      if (isFavorite) {
+        await supabase
+          .from('partnerships')
+          .update({ is_favorite: false })
+          .eq('restaurant_id', restaurantId);
+      }
+      
+      // Depois, define a nova favorita
+      const { error } = await supabase
+        .from('partnerships')
+        .update({ is_favorite: isFavorite })
+        .eq('restaurant_id', restaurantId)
+        .eq('osc_id', oscId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['partnerships', restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ['restaurants'] }); // Atualiza tabela principal
+      toast.success('Favorita atualizada!');
+    },
+    onError: () => {
+      toast.error('Erro ao atualizar favorita');
+    },
+  });
+
+  // Mutation para remover parceria (corrigida)
   const removePartnershipMutation = useMutation({
     mutationFn: async (oscId: string) => {
       const { error } = await supabase
@@ -140,6 +218,7 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['partnerships', restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ['restaurants'] }); // Atualiza tabela principal
       toast.success('Parceria removida com sucesso!');
     },
     onError: () => {
@@ -147,51 +226,27 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
     },
   });
 
-  // Criar novas parcerias
-  const createPartnershipsMutation = useMutation<void, FunctionsError, void>({
-    mutationFn: async (oscId: string) => {
-      if (!restaurantId) throw new Error('Restaurant ID is required');
-      
-      const { data, error } = await supabase.functions.invoke('cf_create_partnership', {
-        body: {
-          restaurant_id: restaurantId,
-          osc_id: oscId,
-          is_favorite: oscId === favoriteOsc,
-        },
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-      });
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['partnerships', restaurantId] });
-      queryClient.invalidateQueries({ queryKey: ['restaurants'] }); // Atualiza tabela principal
-      toast.success('Parceria criada com sucesso!');
-      setSelectedOscs(new Set());
-      setFavoriteOsc('');
-    },
-    onError: (error: FunctionsError) => {
-      toast.error(error.message || 'Erro ao criar parceria');
-    },
-  });
-
-  // Criar múltiplas parcerias
-
   const handleSearch = () => {
     searchOscs();
   };
 
   const handleOscToggle = (oscId: string) => {
-    // Só permite uma OSC selecionada por vez
-    if (selectedOscs.has(oscId)) {
-      setSelectedOscs(new Set());
-      setFavoriteOsc('');
+    const newSelected = new Set(selectedOscs);
+    if (newSelected.has(oscId)) {
+      newSelected.delete(oscId);
+      if (favoriteOsc === oscId) {
+        setFavoriteOsc('');
+      }
     } else {
-      setSelectedOscs(new Set([oscId]));
-      setFavoriteOsc(oscId); // Automaticamente marca como favorita
+      newSelected.add(oscId);
+    }
+    setSelectedOscs(newSelected);
+  };
+
+  const handleFavoriteChange = (oscId: string) => {
+    setFavoriteOsc(oscId);
+    if (!selectedOscs.has(oscId)) {
+      setSelectedOscs(new Set([...selectedOscs, oscId]));
     }
   };
 
@@ -203,6 +258,13 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
     onClose();
   };
 
+  const handleSave = () => {
+    if (selectedOscs.size === 0) {
+      toast.error('Selecione pelo menos uma OSC');
+      return;
+    }
+    createPartnershipsMutation.mutate();
+  };
 
   if (!isOpen) return null;
 
@@ -353,14 +415,8 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
             {view === 'search' && (
               <div className="space-y-6">
                 {/* Search Controls */}
-                <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
-                  <div className="mb-4">
-                    <h4 className="text-lg font-medium text-blue-900 mb-2">Buscar Novas Parcerias</h4>
-                    <p className="text-sm text-blue-700">
-                      Defina a distância máxima para buscarmos OSCs disponíveis para parcerias na região do restaurante.
-                    </p>
-                  </div>
-                  <div className="flex items-end space-x-4">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center space-x-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Raio de busca (km)
@@ -371,35 +427,35 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
                         max="50"
                         value={radiusKm}
                         onChange={(e) => setRadiusKm(Number(e.target.value))}
-                        className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                        className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
-                    <button
-                      onClick={handleSearch}
-                      disabled={isSearching}
-                      className="inline-flex items-center px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                    >
-                      <Search className="w-4 h-4 mr-2" />
-                      {isSearching ? 'Buscando...' : 'Buscar OSCs'}
-                    </button>
+                    <div className="flex-1">
+                      <button
+                        onClick={handleSearch}
+                        disabled={isSearching}
+                        className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                      >
+                        <Search className="w-4 h-4 mr-2" />
+                        {isSearching ? 'Buscando...' : 'Buscar OSCs'}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 {/* Results */}
                 {oscMatches && oscMatches.length > 0 ? (
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-gray-900">
-                        OSCs encontradas ({oscMatches.length})
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        Selecione uma OSC para criar parceria
-                      </p>
-                    </div>
+                    <h4 className="font-medium text-gray-900">
+                      OSCs encontradas ({oscMatches.length})
+                    </h4>
                     <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200 bg-white rounded-lg shadow-sm">
+                      <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Favorita
+                            </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Selecionar
                             </th>
@@ -426,10 +482,18 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
                               <td className="px-6 py-4 whitespace-nowrap text-center">
                                 <input
                                   type="radio"
-                                  name="selectedOsc"
+                                  name="favorite"
+                                  checked={favoriteOsc === osc.osc_id}
+                                  onChange={() => handleFavoriteChange(osc.osc_id)}
+                                  className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300"
+                                />
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <input
+                                  type="checkbox"
                                   checked={selectedOscs.has(osc.osc_id)}
                                   onChange={() => handleOscToggle(osc.osc_id)}
-                                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                 />
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
@@ -489,7 +553,7 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
             <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
               <div className="flex justify-between items-center">
                 <p className="text-sm text-gray-600">
-                  {selectedOscs.size > 0 ? `${Array.from(selectedOscs)[0]} selecionada` : 'Nenhuma OSC selecionada'}
+                  {selectedOscs.size} OSC(s) selecionada(s)
                 </p>
                 <div className="flex space-x-3">
                   <button
@@ -499,11 +563,11 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
                     Cancelar
                   </button>
                   <button
-                    onClick={createMultiplePartnerships}
+                    onClick={handleSave}
                     disabled={createPartnershipsMutation.isPending || selectedOscs.size === 0}
                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    {createPartnershipsMutation.isPending ? 'Criando...' : 'Criar Parceria'}
+                    {createPartnershipsMutation.isPending ? 'Salvando...' : `Criar ${selectedOscs.size} Parceria(s)`}
                   </button>
                 </div>
               </div>
