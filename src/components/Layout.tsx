@@ -23,7 +23,7 @@ export function Layout() {
             alt="Connecting Food" 
             className="h-8 w-auto mb-2"
           />
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+          <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">
             Plataforma do Administrador
           </p>
         </div>

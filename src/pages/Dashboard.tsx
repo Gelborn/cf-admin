@@ -88,30 +88,6 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* ---------- QUICK STATS OVERVIEW ---------- */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 mb-8 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold mb-2">Visão Geral da Plataforma</h2>
-              <p className="text-blue-100">
-                Conectando restaurantes e organizações sociais para reduzir o desperdício
-              </p>
-            </div>
-            <div className="hidden md:block">
-              <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
-                <Heart className="w-8 h-8 text-white" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ---------- HEADER CONTINUATION ---------- */}
-        <div className="mb-8">
-          <p className="mt-2 text-gray-600">
-            Estatísticas em tempo real
-          </p>
-        </div>
-
         {/* ---------- STAT CARDS ---------- */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <StatCard
