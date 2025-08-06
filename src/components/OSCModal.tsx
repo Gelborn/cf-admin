@@ -292,15 +292,15 @@ const FormGrid: React.FC<GridProps> = ({
       
       {/* CNPJ */}
       <InputField
-        label="CNPJ (opcional)"
+        label="CNPJ"
         placeholder="00.000.000/0000-00"
         error={errors.cnpj?.message}
-        {...register('cnpj')}
+        {...register('cnpj', { required: 'CNPJ é obrigatório' })}
       />
       
       {/* Email */}
       <InputField
-        label="Email (opcional)"
+        label="Email"
         type="email"
         autoComplete="email"
         placeholder="contato@osc.org.br"
@@ -309,6 +309,7 @@ const FormGrid: React.FC<GridProps> = ({
           emailError ? 'border-red-500 focus:ring-red-500' : ''
         }
         {...register('email', {
+          required: 'Email é obrigatório',
           pattern: {
             value: /^[\w.%+-]+@[\w.-]+\.[A-Za-z]{2,}$/i,
             message: 'Email inválido',
@@ -328,11 +329,11 @@ const FormGrid: React.FC<GridProps> = ({
       
       {/* Telefone */}
       <InputField
-        label="Telefone (opcional)"
+        label="Telefone"
         type="tel"
         placeholder="(11) 99999-9999"
         error={errors.phone?.message}
-        {...register('phone')}
+        {...register('phone', { required: 'Telefone é obrigatório' })}
       />
     </div>
 

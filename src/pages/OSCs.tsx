@@ -168,14 +168,14 @@ export function OSCs() {
             value={filteredOSCs?.filter(o => o.status === 'active').length ?? 0}
           />
           <StatCard
-            icon={<Mail className="h-8 w-8 text-yellow-600" />}
-            label="Convites Enviados"
-            value={filteredOSCs?.filter(o => o.status === 'invite_sent').length ?? 0}
-          />
-          <StatCard
             icon={<Heart className="h-8 w-8 text-red-600" />}
             label="Inativas"
             value={filteredOSCs?.filter(o => o.status === 'inactive').length ?? 0}
+          />
+          <StatCard
+            icon={<User className="h-8 w-8 text-purple-600" />}
+            label="Com Responsável"
+            value={filteredOSCs?.filter(o => o.responsible_name).length ?? 0}
           />
         </div>
 
