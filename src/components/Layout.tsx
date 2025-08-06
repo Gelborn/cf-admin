@@ -16,17 +16,20 @@ export function Layout() {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <div className="w-64 bg-white shadow-sm border-r border-gray-200">
-        <div className="p-6">
+      <div className="w-64 bg-white shadow-lg border-r border-gray-200">
+        <div className="p-6 border-b border-gray-100">
           <img 
             src="https://connectingfood.com/wp-content/uploads/2023/05/logo-CF.png" 
             alt="Connecting Food" 
-            className="h-8 w-auto"
+            className="h-8 w-auto mb-2"
           />
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Plataforma do Administrador
+          </p>
         </div>
         
-        <nav className="mt-8">
-          <div className="px-3">
+        <nav className="mt-6">
+          <div className="px-4">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
               return (
@@ -34,17 +37,17 @@ export function Layout() {
                   key={item.name}
                   to={item.href}
                   className={`
-                    group flex items-center px-3 py-2 text-sm font-medium rounded-md mb-1
+                    group flex items-center px-4 py-3 text-sm font-medium rounded-xl mb-2 transition-all duration-200
                     ${isActive 
-                      ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700' 
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25' 
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 hover:shadow-sm'
                     }
                   `}
                 >
                   <item.icon
                     className={`
-                      mr-3 h-5 w-5
-                      ${isActive ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-500'}
+                      mr-3 h-5 w-5 transition-colors
+                      ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'}
                     `}
                   />
                   {item.name}
@@ -54,12 +57,12 @@ export function Layout() {
           </div>
         </nav>
 
-        <div className="absolute bottom-0 w-64 p-4">
+        <div className="absolute bottom-0 w-64 p-4 border-t border-gray-100">
           <button
             onClick={signOut}
-            className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900"
+            className="flex items-center w-full px-4 py-3 text-sm font-medium text-gray-600 rounded-xl hover:bg-red-50 hover:text-red-600 transition-all duration-200 group"
           >
-            <LogOut className="mr-3 h-5 w-5 text-gray-400" />
+            <LogOut className="mr-3 h-5 w-5 text-gray-400 group-hover:text-red-500 transition-colors" />
             Sair
           </button>
         </div>
