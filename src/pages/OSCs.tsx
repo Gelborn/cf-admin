@@ -156,26 +156,16 @@ export function OSCs() {
         </div>
 
         {/* ---------- STAT CARDS ---------- */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <StatCard
             icon={<Building2 className="h-8 w-8 text-green-600" />}
             label="Total de OSCs"
             value={filteredOSCs?.length ?? 0}
           />
           <StatCard
-            icon={<MapPin className="h-8 w-8 text-blue-600" />}
-            label="Ativas"
-            value={filteredOSCs?.filter(o => o.status === 'active').length ?? 0}
-          />
-          <StatCard
             icon={<Heart className="h-8 w-8 text-red-600" />}
             label="Inativas"
             value={filteredOSCs?.filter(o => o.status === 'inactive').length ?? 0}
-          />
-          <StatCard
-            icon={<User className="h-8 w-8 text-purple-600" />}
-            label="Com Responsável"
-            value={filteredOSCs?.filter(o => o.responsible_name).length ?? 0}
           />
         </div>
 

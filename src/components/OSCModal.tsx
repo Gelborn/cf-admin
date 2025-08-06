@@ -147,13 +147,13 @@ export function OSCModal({
       closeModal();
     } catch (err: any) {
       const status = err?.status;
-      const message = 'Não foi possível criar a OSC, tente novamente mais tarde.';
 
       if (status === 409) {
-        const msg = 'Email já cadastrado';
+        const msg = 'CNPJ ou Email já cadastrado';
         setEmailError(msg);
         setError('email', { type: 'manual', message: msg });
       } else {
+        const message = 'Não foi possível criar a OSC, tente novamente mais tarde.';
         toast.error(message, { style: { zIndex: 9999 } });
       }
     }
