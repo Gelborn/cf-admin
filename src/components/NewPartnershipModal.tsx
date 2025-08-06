@@ -8,7 +8,7 @@ import { FunctionsError } from '@supabase/supabase-js';
 
 interface OSCMatch {
   osc_id: string;
-  name: string;
+  osc_name: string;
   city?: string;
   uf?: string;
   distance_km: number;
@@ -252,7 +252,7 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div>
                                 <div className="text-sm font-medium text-gray-900">
-                                  {osc.name}
+                                  {osc.osc_name}
                                 </div>
                                 {osc.city && osc.uf && (
                                   <div className="text-sm text-gray-500 flex items-center">
