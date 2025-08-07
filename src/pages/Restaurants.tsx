@@ -98,6 +98,7 @@ export function Restaurants() {
           // 🔍 Erros vindos da função
           if (error instanceof FunctionsHttpError) {
             const details = await error.context.json()    // { code, message }
+            console.log('Details from create restaurant:', details);
             throw { status: error.context.status, ...details }
           }
     
@@ -113,9 +114,6 @@ export function Restaurants() {
         return data ?? {};               // aceita corpo vazio
 
       } catch (rawErr: any) {
-        // Log rawErr
-        console.log('Raw error from create restaurant:', rawErr);
-
         const resp: Response | undefined =
           rawErr?.response ?? rawErr?.context?.response;
 
