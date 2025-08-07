@@ -97,21 +97,30 @@ export function Restaurants() {
         if (error) {
           if (error instanceof FunctionsHttpError) {
             // 1) pega o objeto Response
-            const res = error.context
-    
-            // 2) parseia o JSON que você retornou na função
-            //    (pode lançar se o body não for JSON válido)
-            const details = await res.json()   // { code: "...", message: "..." }
-    
-            console.log('Details from create restaurant:', details)
-            // agora details.code tem o valor que você jogou no servidor
-    
+            const res: Response = error.context
+          
+            // 2) tenta extrair JSON clonando o response
+            let details: { code?: string; message?: string } = {}
+            try {
+              details = await res.clone().json()
+            } catch (_) {
+              // 3) fallback: ler como texto e parsear
+              const text = await res.text()
+              try {
+                details = JSON.parse(text)
+              } catch {
+                console.warn('Corpo não era JSON válido:', text)
+              }
+            }
+          
+            console.log('Código customizado:', details.code)
             throw {
-              status: res.status,   // 422, 403, 409…
-              code:   details.code, // seu código customizado
-              message: details.message,
+              status: res.status,
+              code:   details.code ?? 'UNKNOWN_ERROR',
+              message: details.message ?? 'Erro desconhecido',
             }
           }
+          
     
           // 🔍 Problemas de rede / relay
           if (error instanceof FunctionsRelayError || error instanceof FunctionsFetchError) {
