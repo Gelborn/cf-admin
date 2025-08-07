@@ -98,8 +98,8 @@ export function Restaurants() {
           // 🔍 Erros vindos da função
           if (error instanceof FunctionsHttpError) {
             const details = await error.context.json()
-            console.log('Details from create restaurant:', details.Response);
-            throw { status: details.Response.status, ...details }
+            console.log('Details from create restaurant:', details.response.status);
+            throw { status: details.response.status, ...details }
           }
     
           // 🔍 Problemas de rede / relay
