@@ -90,32 +90,28 @@ export function OSCs() {
         if (error) {
           // Erro retornado pela Edge Function
           if (error instanceof FunctionsHttpError) {
-            const status = error.context.status
-            console.log('cf_create_osc HTTP status:', status)
-            throw { status }
+            const status = error.context.status;
+            console.log('Edge Function HTTP status:', status);
+            throw { status };
           }
+
           // Erros de rede / relay
           if (error instanceof FunctionsRelayError || error instanceof FunctionsFetchError) {
-            console.log('Network/Relay error → usando 503')
-            throw { status: 503, message: error.message }
+            console.log('Network/Relay error → usando 503');
+            throw { status: 503, message: error.message };
           }
-          // Fallback genérico
-          throw error
+
+          // Qualquer outro tipo de erro
+          throw error;
         }
 
         // Sucesso (2xx)
         return {}
       } catch (rawErr: any) {
-        // Extrai status de qualquer erro capturado
-        const status = rawErr.status ?? 500
-        console.log('createOSCMutation error status (catch):', status)
-        // Mensagem padrão ou corpo da Response, se disponível
-        let message = rawErr.message ?? 'Erro desconhecido'
-        const resp: Response | undefined = rawErr?.response ?? rawErr?.context?.response
-        if (resp) {
-          try { message = await resp.text() } catch {/* ignore */}
-        }
-        throw { status, message }
+        // Garante que sempre logamos o status antes de reprojetar
+        const status = rawErr.status ?? 500;
+        console.log('Mutation error status (catch):', status);
+        throw rawErr;
       }
     },
     onSuccess: () => {
