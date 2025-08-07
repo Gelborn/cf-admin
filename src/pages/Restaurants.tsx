@@ -106,6 +106,9 @@ export function Restaurants() {
         return data ?? {};               // aceita corpo vazio
 
       } catch (rawErr: any) {
+        // Log rawErr
+        console.log('Raw error from create restaurant:', rawErr);
+
         const resp: Response | undefined =
           rawErr?.response ?? rawErr?.context?.response;
 
