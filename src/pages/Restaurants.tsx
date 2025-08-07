@@ -93,6 +93,10 @@ export function Restaurants() {
           },
         );
 
+        // Log data & error
+        console.log('Data response from create restaurant:', data);
+        console.log('Error response from create restaurant:', error);
+
         /* se a Edge Function enviou erro 4xx/5xx */
         if (error) {
           throw { status: error.status ?? 500, message: error.message };
