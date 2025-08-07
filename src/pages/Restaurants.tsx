@@ -95,11 +95,22 @@ export function Restaurants() {
         );
 
         if (error) {
-          // 🔍 Erros vindos da função
           if (error instanceof FunctionsHttpError) {
-            const details = await error.context
-            console.log('Details from create restaurant:', details);
-            throw { status: details.status, ...details }
+            // 1) pega o objeto Response
+            const res = error.context
+    
+            // 2) parseia o JSON que você retornou na função
+            //    (pode lançar se o body não for JSON válido)
+            const details = await res.json()   // { code: "...", message: "..." }
+    
+            console.log('Details from create restaurant:', details)
+            // agora details.code tem o valor que você jogou no servidor
+    
+            throw {
+              status: res.status,   // 422, 403, 409…
+              code:   details.code, // seu código customizado
+              message: details.message,
+            }
           }
     
           // 🔍 Problemas de rede / relay
@@ -114,6 +125,7 @@ export function Restaurants() {
         return data ?? {};               // aceita corpo vazio
 
       } catch (rawErr: any) {
+        console.log('Raw error from create restaurant:', rawErr);
         const resp: Response | undefined =
           rawErr?.response ?? rawErr?.context?.response;
 
