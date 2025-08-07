@@ -95,56 +95,30 @@ export function Restaurants() {
         );
 
         if (error) {
+          // Erro retornado pela Edge Function
           if (error instanceof FunctionsHttpError) {
-            // 1) pega o objeto Response
-            const res: Response = error.context
-          
-            // 2) tenta extrair JSON clonando o response
-            let details: { code?: string; message?: string } = {}
-            try {
-              details = await res.clone().json()
-            } catch (_) {
-              // 3) fallback: ler como texto e parsear
-              const text = await res.text()
-              try {
-                details = JSON.parse(text)
-              } catch {
-                console.warn('Corpo não era JSON válido:', text)
-              }
-            }
-          
-            console.log('Código customizado:', details.code)
-            throw {
-              status: res.status,
-              code:   details.code ?? 'UNKNOWN_ERROR',
-              message: details.message ?? 'Erro desconhecido',
-            }
+            const status = error.context.status;
+            console.log('Edge Function HTTP status:', status);
+            throw { status };
           }
-          
-    
-          // 🔍 Problemas de rede / relay
+
+          // Erros de rede / relay
           if (error instanceof FunctionsRelayError || error instanceof FunctionsFetchError) {
-            throw { status: 503, message: error.message }
+            console.log('Network/Relay error → usando 503');
+            throw { status: 503, message: error.message };
           }
-    
-          throw error // fallback
+
+          // Qualquer outro tipo de erro
+          throw error;
         }
 
-        /* chegamos aqui = status 2xx, mesmo sem `data` */
-        return data ?? {};               // aceita corpo vazio
-
+        // Sucesso (2xx)
+        return data ?? {};
       } catch (rawErr: any) {
-        console.log('Raw error from create restaurant:', rawErr);
-        const resp: Response | undefined =
-          rawErr?.response ?? rawErr?.context?.response;
-
-        const status  = resp?.status ?? rawErr?.status ?? 500;
-        let   message = rawErr?.message ?? 'Erro desconhecido';
-
-        if (resp) {
-          try { message = await resp.text(); } catch {/* ignore */}
-        }
-        throw { status, message };
+        // Garante que sempre logamos o status antes de reprojetar
+        const status = rawErr.status ?? 500;
+        console.log('Mutation error status (catch):', status);
+        throw rawErr;
       }
     },
     onSuccess: () => {
