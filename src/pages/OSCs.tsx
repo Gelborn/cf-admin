@@ -19,6 +19,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { OSCModal } from '../components/OSCModal';
 import toast from 'react-hot-toast';
+import { FunctionsFetchError, FunctionsHttpError, FunctionsRelayError } from '@supabase/supabase-js';
 
 /* ------------------------------------------------------------------ */
 /* Tipos                                                               */
@@ -77,39 +78,52 @@ export function OSCs() {
     },
   });
 
-  /* ---------------------- Mutation: create -------------------- */
+  /* ---------------------- Mutation: create OSC -------------------- */
   const createOSCMutation = useMutation({
     mutationFn: async (payload: CreateOSCPayload) => {
       try {
         const { error } = await supabase.functions.invoke('cf_create_osc', {
           body: payload,
           headers: { Authorization: `Bearer ${session?.access_token}` },
-        });
+        })
 
         if (error) {
-          throw { status: error.status ?? 500, message: error.message };
+          // Erro retornado pela Edge Function
+          if (error instanceof FunctionsHttpError) {
+            const status = error.context.status
+            console.log('cf_create_osc HTTP status:', status)
+            throw { status }
+          }
+          // Erros de rede / relay
+          if (error instanceof FunctionsRelayError || error instanceof FunctionsFetchError) {
+            console.log('Network/Relay error → usando 503')
+            throw { status: 503, message: error.message }
+          }
+          // Fallback genérico
+          throw error
         }
 
-        return {};
+        // Sucesso (2xx)
+        return {}
       } catch (rawErr: any) {
-        const resp: Response | undefined =
-          rawErr?.response ?? rawErr?.context?.response;
-
-        const status = resp?.status ?? rawErr?.status ?? 500;
-        let message = rawErr?.message ?? 'Erro desconhecido';
-
+        // Extrai status de qualquer erro capturado
+        const status = rawErr.status ?? 500
+        console.log('createOSCMutation error status (catch):', status)
+        // Mensagem padrão ou corpo da Response, se disponível
+        let message = rawErr.message ?? 'Erro desconhecido'
+        const resp: Response | undefined = rawErr?.response ?? rawErr?.context?.response
         if (resp) {
-          try { message = await resp.text(); } catch {/* ignore */}
+          try { message = await resp.text() } catch {/* ignore */}
         }
-        throw { status, message };
+        throw { status, message }
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['oscs'] });
-      toast.success('OSC criada com sucesso!');
-      setIsModalOpen(false);
+      qc.invalidateQueries({ queryKey: ['oscs'] })
+      toast.success('OSC criada com sucesso!')
+      setIsModalOpen(false)
     },
-  });
+  })
 
   /* helper para o modal (async) */
   const handleCreateOSC = (data: CreateOSCPayload) =>
