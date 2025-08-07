@@ -19,6 +19,7 @@ import { useAuth } from '../hooks/useAuth';
 import { RestaurantModal } from '../components/RestaurantModal';
 import { NewPartnershipModal } from '../components/NewPartnershipModal';
 import toast from 'react-hot-toast';
+import { FunctionsFetchError, FunctionsHttpError, FunctionsRelayError } from '@supabase/supabase-js';
 
 /* ------------------------------------------------------------------ */
 /* Tipos                                                               */
@@ -93,13 +94,19 @@ export function Restaurants() {
           },
         );
 
-        // Log data & error
-        console.log('Data response from create restaurant:', data);
-        console.log('Error response from create restaurant:', error);
-
-        /* se a Edge Function enviou erro 4xx/5xx */
         if (error) {
-          throw { status: error.status ?? 500, message: error.message };
+          // 🔍 Erros vindos da função
+          if (error instanceof FunctionsHttpError) {
+            const details = await error.context.json()    // { code, message }
+            throw { status: error.context.status, ...details }
+          }
+    
+          // 🔍 Problemas de rede / relay
+          if (error instanceof FunctionsRelayError || error instanceof FunctionsFetchError) {
+            throw { status: 503, message: error.message }
+          }
+    
+          throw error // fallback
         }
 
         /* chegamos aqui = status 2xx, mesmo sem `data` */
