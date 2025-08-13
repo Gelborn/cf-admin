@@ -98,7 +98,7 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
         uf: (p.osc as any)?.uf,
         is_favorite: p.is_favorite,
         created_at: p.created_at,
-        distance_km: p.distance_km,
+        distance_km: p.distance_km === null || p.distance_km === undefined ? null : Number(p.distance_km),
       }));
       
       // Ordenar: favorita primeiro, depois por nome
@@ -345,12 +345,14 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
                                   <span className="text-sm">{partnership.city}, {partnership.uf}</span>
                                 </div>
                               )}
-                              {partnership.distance_km && (
+                              {(partnership.distance_km !== null && partnership.distance_km !== undefined) && (
                                 <div className="flex items-center text-gray-500 mb-2">
                                   <div className="w-4 h-4 mr-2 flex items-center justify-center">
                                     <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
                                   </div>
-                                  <span className="text-sm">Distância {(partnership.distance_km || 0).toFixed(1)} km</span>
+                                  <span className="text-sm">
+                                    Distância {partnership.distance_km === 0 ? '0 km' : `${partnership.distance_km.toFixed(1)} km`}
+                                  </span>
                                 </div>
                               )}
                               <div className="flex items-center text-gray-500">
