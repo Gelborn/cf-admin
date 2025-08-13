@@ -343,11 +343,14 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
                                 <div className="flex items-center text-gray-600 mb-2">
                                   <MapPin className="w-4 h-4 mr-2 text-gray-400" />
                                   <span className="text-sm">{partnership.city}, {partnership.uf}</span>
-                                  {partnership.distance_km && (
-                                    <span className="text-xs text-gray-500 ml-2">
-                                      • {partnership.distance_km.toFixed(1)}km
-                                    </span>
-                                  )}
+                                </div>
+                              )}
+                              {partnership.distance_km && (
+                                <div className="flex items-center text-gray-500 mb-2">
+                                  <div className="w-4 h-4 mr-2 flex items-center justify-center">
+                                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                  </div>
+                                  <span className="text-sm">Distância {partnership.distance_km.toFixed(1)} km</span>
                                 </div>
                               )}
                               <div className="flex items-center text-gray-500">
