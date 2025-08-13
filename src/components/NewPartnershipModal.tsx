@@ -24,6 +24,7 @@ interface Partnership {
   uf?: string;
   is_favorite: boolean;
   created_at: string;
+  distance_km?: number;
 }
 
 interface Restaurant {
@@ -78,6 +79,7 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
           osc_id,
           is_favorite,
           created_at,
+          distance_km,
           osc:osc_id (
             id,
             name,
@@ -89,14 +91,22 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
       
       if (error) throw error;
       
-      return data.map(p => ({
+      const partnerships = data.map(p => ({
         osc_id: p.osc_id,
         osc_name: (p.osc as any)?.name || 'Nome não encontrado',
         city: (p.osc as any)?.city,
         uf: (p.osc as any)?.uf,
         is_favorite: p.is_favorite,
         created_at: p.created_at,
+        distance_km: p.distance_km,
       }));
+      
+      // Ordenar: favorita primeiro, depois por nome
+      return partnerships.sort((a, b) => {
+        if (a.is_favorite && !b.is_favorite) return -1;
+        if (!a.is_favorite && b.is_favorite) return 1;
+        return a.osc_name.localeCompare(b.osc_name);
+      });
     },
     enabled: !!restaurantId && isOpen,
   });
@@ -333,6 +343,11 @@ export function NewPartnershipModal({ isOpen, onClose, restaurantId }: NewPartne
                                 <div className="flex items-center text-gray-600 mb-2">
                                   <MapPin className="w-4 h-4 mr-2 text-gray-400" />
                                   <span className="text-sm">{partnership.city}, {partnership.uf}</span>
+                                  {partnership.distance_km && (
+                                    <span className="text-xs text-gray-500 ml-2">
+                                      • {partnership.distance_km.toFixed(1)}km
+                                    </span>
+                                  )}
                                 </div>
                               )}
                               <div className="flex items-center text-gray-500">
