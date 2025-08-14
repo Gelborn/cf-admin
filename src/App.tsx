@@ -9,6 +9,7 @@ import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Restaurants } from './pages/Restaurants';
 import { OSCs } from './pages/OSCs';
+import { Donations } from './pages/Donations';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,6 +43,7 @@ function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="restaurants" element={<Restaurants />} />
               <Route path="oscs" element={<OSCs />} />
+              <Route path="donations" element={<Donations />} />
             </Route>
           </Routes>
         </Router>

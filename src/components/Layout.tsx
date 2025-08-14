@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom';
-import { LogOut, LayoutDashboard, Store, Heart } from 'lucide-react';
+import { LogOut, LayoutDashboard, Store, Heart, Package } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -11,6 +11,7 @@ export function Layout() {
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Restaurantes', href: '/restaurants', icon: Store },
     { name: 'OSCs', href: '/oscs', icon: Heart },
+    { name: 'Doações', href: '/donations', icon: Package },
   ];
 
   return (
