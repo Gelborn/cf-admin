@@ -14,7 +14,8 @@ import {
   Scale,
   TrendingUp,
   XCircle,
-  Users
+  Users,
+  X
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -232,6 +233,7 @@ interface DonationCardProps {
 
 function DonationCard({ donation }: DonationCardProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showRedirectModal, setShowRedirectModal] = useState(false);
 
   // Atualiza o timer a cada segundo
   useEffect(() => {
@@ -267,7 +269,7 @@ function DonationCard({ donation }: DonationCardProps) {
         
         const urgent = hours < 2;
         return {
-          text: `${hours}h ${minutes}min restantes`,
+          text: `${hours}h ${minutes}min`,
           color: urgent ? 'text-red-600' : 'text-yellow-600',
           urgent
         };
@@ -284,7 +286,7 @@ function DonationCard({ donation }: DonationCardProps) {
       
       const urgent = hours < 4;
       return {
-        text: `${hours}h ${minutes}min para coleta`,
+        text: `${hours}h ${minutes}min`,
         color: urgent ? 'text-red-600' : 'text-blue-600',
         urgent
       };
@@ -375,6 +377,19 @@ function DonationCard({ donation }: DonationCardProps) {
                 Histórico da Doação
               </h4>
               <IntentTimeline intents={donation.donation_intents} />
+              
+              {/* Botão de redirecionamento para doações pendentes */}
+              {donation.donation_status === 'pending' && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={() => setShowRedirectModal(true)}
+                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                  >
+                    <TrendingUp className="h-4 w-4 mr-2" />
+                    Gostaria de redirecionar essa doação?
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -401,6 +416,15 @@ function DonationCard({ donation }: DonationCardProps) {
           </div>
         </div>
       </div>
+      
+      {/* Modal de redirecionamento */}
+      {showRedirectModal && (
+        <RedirectModal 
+          isOpen={showRedirectModal}
+          onClose={() => setShowRedirectModal(false)}
+          donationId={donation.donation_id}
+        />
+      )}
     </div>
   );
 }
@@ -589,6 +613,68 @@ const PackageItem = ({ package: pkg }: { package: PackageInfo }) => {
             Vencendo
           </span>
         )}
+      </div>
+    </div>
+  );
+};
+
+const RedirectModal = ({ 
+  isOpen, 
+  onClose, 
+  donationId 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  donationId: string; 
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen px-4 py-8">
+        <div className="fixed inset-0 bg-gray-500/75" onClick={onClose} />
+        
+        <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 rounded-t-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Redirecionar Doação</h3>
+                  <p className="text-blue-100 text-sm">#{donationId.slice(-8)}</p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="text-white/80 hover:text-white p-2 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          
+          {/* Content */}
+          <div className="p-6 text-center">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Package className="w-8 h-8 text-blue-600" />
+            </div>
+            <h4 className="text-xl font-semibold text-gray-900 mb-2">
+              Em Implementação
+            </h4>
+            <p className="text-gray-600 mb-6">
+              A funcionalidade de redirecionamento de doações está sendo desenvolvida e estará disponível em breve.
+            </p>
+            <button
+              onClick={onClose}
+              className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Entendi
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
