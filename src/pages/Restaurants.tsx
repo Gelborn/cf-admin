@@ -30,6 +30,8 @@ interface RestaurantWithPartners {
   name: string;
   email: string;
   phone: string | null;
+  cnpj: string | null;
+  code: string | null;
   address_full: string | null;
   street: string | null;
   number: string | null;
@@ -48,6 +50,8 @@ interface RestaurantWithPartners {
 interface CreateRestaurantPayload {
   name: string;
   emailOwner: string;
+  cnpj?: string;
+  code?: string;
   cep: string;
   number: string;
   street?: string;
@@ -249,6 +253,16 @@ export function Restaurants() {
                               <div className="flex items-center text-sm text-gray-600">
                                 <Phone className="h-3 w-3 mr-2 text-gray-400" />
                                 {r.phone}
+                              </div>
+                            )}
+                            {r.cnpj && (
+                              <div className="text-sm text-gray-500">
+                                CNPJ: {r.cnpj}
+                              </div>
+                            )}
+                            {r.code && (
+                              <div className="text-sm text-gray-500">
+                                Código: {r.code}
                               </div>
                             )}
                           </div>

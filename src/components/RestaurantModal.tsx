@@ -15,6 +15,8 @@ import toast from 'react-hot-toast';
 export interface RestaurantFormData {
   name: string;
   emailOwner: string;
+  cnpj?: string;
+  code?: string;
   phone: string;
   cep: string;
   number: string;
@@ -65,6 +67,8 @@ export function RestaurantModal({
   } = useForm<RestaurantFormData>();
 
   const cepValue = watch('cep');
+  const cnpjValue = watch('cnpj');
+  const codeValue = watch('code');
 
   /* -------------------- autofill: garante 1º clique ----------------- */
   useEffect(() => {
@@ -95,6 +99,15 @@ export function RestaurantModal({
 
   /* ------------------------ Helpers --------------------------------- */
   const formatCep = (v: string) => v.replace(/\D/g, '').slice(0, 8);
+  
+  const formatCnpj = (v: string) => {
+    const digits = v.replace(/\D/g, '').slice(0, 14);
+    return digits
+      .replace(/^(\d{2})(\d)/, '$1.$2')
+      .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+      .replace(/\.(\d{3})(\d)/, '.$1/$2')
+      .replace(/(\d{4})(\d)/, '$1-$2');
+  };
 
   const closeModal = () => {
     reset();
@@ -145,13 +158,28 @@ export function RestaurantModal({
       closeModal();                 // NEW: fecha & reseta
     } catch (err: any) {
       const status  = err?.status;
-      const message = 'Não foi possível criar o restaurante, tente novamente mais tarde.';
 
       if (status === 409) {
-        const msg = 'Email já cadastrado';
+        // Determina quais campos foram preenchidos para mostrar erro específico
+        const hasEmail = true; // email é sempre obrigatório
+        const hasCnpj = !!data.cnpj?.trim();
+        const hasCode = !!data.code?.trim();
+        
+        let msg = '';
+        if (hasEmail && hasCnpj && hasCode) {
+          msg = 'Email, CNPJ ou Código já existem';
+        } else if (hasEmail && hasCnpj) {
+          msg = 'Email ou CNPJ já existem';
+        } else if (hasEmail && hasCode) {
+          msg = 'Email ou Código já existem';
+        } else {
+          msg = 'Email já cadastrado';
+        }
+        
         setEmailError(msg);
         setError('emailOwner', { type: 'manual', message: msg });
       } else {
+        const message = 'Não foi possível criar o restaurante, tente novamente mais tarde.';
         toast.error(message, { style: { zIndex: 9999 } });
       }
     }
@@ -165,6 +193,11 @@ export function RestaurantModal({
     setValue('street', '');
     setValue('city', '');
     setValue('uf', '');
+  };
+  
+  const handleCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatCnpj(e.target.value);
+    setValue('cnpj', formatted);
   };
 
   /* ----------------------------- JSX ------------------------------- */
@@ -192,6 +225,9 @@ export function RestaurantModal({
                 cepSearched={cepSearched}
                 handleCepChange={handleCepChange}
                 fetchCepInfo={fetchCepInfo}
+                cnpjValue={cnpjValue}
+                codeValue={codeValue}
+                handleCnpjChange={handleCnpjChange}
               />
               {/* ---------- Ações ---------- */}
               <div className="flex justify-end pt-6 space-x-3 border-t">
@@ -255,7 +291,10 @@ interface GridProps {
   cepError: string;
   cepLoading: boolean;
   cepSearched: boolean;
+  cnpjValue: string;
+  codeValue: string;
   handleCepChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleCnpjChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   fetchCepInfo: () => void;
 }
 const FormGrid: React.FC<GridProps> = ({
@@ -266,7 +305,10 @@ const FormGrid: React.FC<GridProps> = ({
   cepError,
   cepLoading,
   cepSearched,
+  cnpjValue,
+  codeValue,
   handleCepChange,
+  handleCnpjChange,
   fetchCepInfo,
 }) => (
   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -302,6 +344,30 @@ const FormGrid: React.FC<GridProps> = ({
             message: 'Email inválido',
           },
         })}
+      />
+      {/* CNPJ */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          CNPJ (opcional)
+        </label>
+        <input
+          type="text"
+          placeholder="00.000.000/0000-00"
+          value={cnpjValue || ''}
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+          {...register('cnpj')}
+          onChange={handleCnpjChange}
+        />
+        {errors.cnpj && (
+          <p className="text-sm text-red-600 mt-1">{errors.cnpj.message}</p>
+        )}
+      </div>
+      {/* Código */}
+      <InputField
+        label="Código (opcional)"
+        placeholder="Ex: REST001"
+        error={errors.code?.message}
+        {...register('code')}
       />
       {/* Telefone */}
       <InputField
