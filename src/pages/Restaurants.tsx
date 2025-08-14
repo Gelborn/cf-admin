@@ -29,6 +29,20 @@ import { FunctionsFetchError, FunctionsHttpError, FunctionsRelayError } from '@s
 /* ------------------------------------------------------------------ */
 /* Tipos                                                               */
 /* ------------------------------------------------------------------ */
+interface Partnership {
+  created_at: string;
+  is_favorite: boolean;
+  distance_km: number;
+  osc: {
+    id: string;
+    name: string;
+    street?: string;
+    number?: string;
+    city?: string;
+    uf?: string;
+  };
+}
+
 interface RestaurantWithPartners {
   id: string;
   user_id: string;
@@ -48,22 +62,7 @@ interface RestaurantWithPartners {
   status: 'active' | 'inactive' | 'invite_sent';
   added_at: string;
   updated_at: string;
-  partners_list: { id: string; name: string }[] | null;
-  favorite_osc: { id: string; name: string } | null;
-}
-
-// Mock data para as parcerias (temporário)
-interface PartnershipDetail {
-  id: string;
-  name: string;
-  city: string;
-  uf: string;
-  is_favorite: boolean;
-  created_at: string;
-  distance_km: number;
-  donations_30d: number;
-  accepted_30d: number;
-  last_donation: string | null;
+  partnerships: Partnership[];
 }
 
 interface CreateRestaurantPayload {
@@ -90,63 +89,6 @@ export function Restaurants() {
   const [isPartnershipModalOpen, setIsPartnershipModalOpen] = useState(false);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-
-  // Mock function para gerar dados de parceria
-  const getMockPartnerships = (restaurantId: string): PartnershipDetail[] => {
-    const mockData: PartnershipDetail[] = [
-      {
-        id: '1',
-        name: 'Instituto Beneficente São José',
-        city: 'São Paulo',
-        uf: 'SP',
-        is_favorite: true,
-        created_at: '2024-01-15T10:00:00Z',
-        distance_km: 2.3,
-        donations_30d: 12,
-        accepted_30d: 10,
-        last_donation: '2024-01-20T14:30:00Z',
-      },
-      {
-        id: '2',
-        name: 'Casa da Esperança',
-        city: 'São Paulo',
-        uf: 'SP',
-        is_favorite: false,
-        created_at: '2024-01-10T09:00:00Z',
-        distance_km: 4.7,
-        donations_30d: 8,
-        accepted_30d: 7,
-        last_donation: '2024-01-18T16:45:00Z',
-      },
-      {
-        id: '3',
-        name: 'Lar dos Idosos Santa Clara',
-        city: 'São Paulo',
-        uf: 'SP',
-        is_favorite: false,
-        created_at: '2024-01-05T11:00:00Z',
-        distance_km: 1.8,
-        donations_30d: 15,
-        accepted_30d: 13,
-        last_donation: '2024-01-19T12:15:00Z',
-      },
-    ];
-    
-    // Retorna diferentes quantidades baseado no ID do restaurante
-    const count = restaurantId.length % 4;
-    return mockData.slice(0, Math.max(1, count));
-  };
-
-  const toggleRowExpansion = (restaurantId: string) => {
-    const newExpanded = new Set(expandedRows);
-    if (newExpanded.has(restaurantId)) {
-      newExpanded.delete(restaurantId);
-    } else {
-      newExpanded.add(restaurantId);
-    }
-    setExpandedRows(newExpanded);
-  };
 
   /* ----------------------- Query: lista ----------------------- */
   const { data: restaurants, isLoading } = useQuery<RestaurantWithPartners[]>({
@@ -277,7 +219,7 @@ export function Restaurants() {
           <StatCard
             icon={<Heart className="h-8 w-8 text-red-600" />}
             label="Total de Parcerias"
-            value={filteredRestaurants?.reduce((acc, r) => acc + (r.partners_list?.length || 0), 0) ?? 0}
+            value={filteredRestaurants?.reduce((acc, r) => acc + (r.partnerships?.length || 0), 0) ?? 0}
           />
         </div>
 
@@ -303,10 +245,7 @@ export function Restaurants() {
                 <RestaurantRow
                   key={r.id}
                   restaurant={r}
-                  isExpanded={expandedRows.has(r.id)}
-                  onToggleExpansion={() => toggleRowExpansion(r.id)}
                   onOpenPartnership={() => handleOpenNewPartnership(r.id)}
-                  partnerships={getMockPartnerships(r.id)}
                 />
               ))}
             </div>
@@ -365,20 +304,15 @@ export function Restaurants() {
 /* ------------------------------------------------------------------ */
 interface RestaurantRowProps {
   restaurant: RestaurantWithPartners;
-  isExpanded: boolean;
-  onToggleExpansion: () => void;
   onOpenPartnership: () => void;
-  partnerships: PartnershipDetail[];
 }
 
 function RestaurantRow({ 
   restaurant, 
-  isExpanded, 
-  onToggleExpansion, 
-  onOpenPartnership,
-  partnerships 
+  onOpenPartnership
 }: RestaurantRowProps) {
-  const hasPartnerships = partnerships.length > 0;
+  const hasPartnerships = restaurant.partnerships && restaurant.partnerships.length > 0;
+  const partnerships = restaurant.partnerships || [];
 
   return (
     <div className="bg-white">
@@ -444,7 +378,7 @@ function RestaurantRow({
                     <div className="flex items-center">
                       <Heart className="h-3 w-3 mr-1 text-red-500 fill-current" />
                       <span className="text-xs text-gray-600">
-                        Favorita: {partnerships.find(p => p.is_favorite)?.name}
+                        Favorita: {partnerships.find(p => p.is_favorite)?.osc.name}
                       </span>
                     </div>
                   )}
@@ -461,29 +395,15 @@ function RestaurantRow({
               onClick={onOpenPartnership}
               className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
             >
-              <Users className="h-3 w-3 mr-1" />
-              Gerir Parcerias
+              <Plus className="h-3 w-3 mr-1" />
+              {hasPartnerships ? 'Nova Parceria' : 'Criar Parceria'}
             </button>
-            
-            {hasPartnerships && (
-              <button
-                onClick={onToggleExpansion}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                title={isExpanded ? 'Recolher parcerias' : 'Expandir parcerias'}
-              >
-                {isExpanded ? (
-                  <ChevronDown className="h-5 w-5" />
-                ) : (
-                  <ChevronRight className="h-5 w-5" />
-                )}
-              </button>
-            )}
           </div>
         </div>
       </div>
 
-      {/* Accordion de parcerias */}
-      {hasPartnerships && isExpanded && (
+      {/* Accordion de parcerias - sempre aberto se houver parcerias */}
+      {hasPartnerships && (
         <div className="border-t border-gray-100 bg-gray-50">
           <div className="px-6 py-4">
             <h4 className="text-sm font-medium text-gray-900 mb-4 flex items-center">
@@ -492,7 +412,7 @@ function RestaurantRow({
             </h4>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {partnerships.map((partnership) => (
-                <PartnershipCard key={partnership.id} partnership={partnership} />
+                <PartnershipCard key={partnership.osc.id} partnership={partnership} />
               ))}
             </div>
           </div>
@@ -506,7 +426,7 @@ function RestaurantRow({
 /* Card de parceria individual                                         */
 /* ------------------------------------------------------------------ */
 interface PartnershipCardProps {
-  partnership: PartnershipDetail;
+  partnership: Partnership;
 }
 
 function PartnershipCard({ partnership }: PartnershipCardProps) {
@@ -515,15 +435,6 @@ function PartnershipCard({ partnership }: PartnershipCardProps) {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
-    });
-  };
-
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
     });
   };
 
@@ -536,15 +447,22 @@ function PartnershipCard({ partnership }: PartnershipCardProps) {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2 mb-1">
-              <h5 className="font-medium text-gray-900 text-sm truncate">{partnership.name}</h5>
+              <h5 className="font-medium text-gray-900 text-sm truncate">{partnership.osc.name}</h5>
               {partnership.is_favorite && (
                 <Heart className="w-3 h-3 text-red-500 fill-current flex-shrink-0" />
               )}
             </div>
-            <div className="flex items-center text-xs text-gray-600">
-              <MapPin className="w-3 h-3 mr-1" />
-              {partnership.city}, {partnership.uf}
-            </div>
+            {partnership.osc.city && partnership.osc.uf && (
+              <div className="flex items-center text-xs text-gray-600">
+                <MapPin className="w-3 h-3 mr-1" />
+                {partnership.osc.city}, {partnership.osc.uf}
+              </div>
+            )}
+            {partnership.osc.street && partnership.osc.number && (
+              <div className="text-xs text-gray-500 mt-1">
+                {partnership.osc.street}, {partnership.osc.number}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -555,33 +473,11 @@ function PartnershipCard({ partnership }: PartnershipCardProps) {
           <span className="font-medium text-gray-900">{partnership.distance_km.toFixed(1)} km</span>
         </div>
         
-        <div className="flex items-center justify-between">
-          <span className="text-gray-500">Doações 30d:</span>
-          <div className="flex items-center space-x-1">
-            <Package className="w-3 h-3 text-blue-500" />
-            <span className="font-medium text-gray-900">{partnership.donations_30d}</span>
-          </div>
-        </div>
-        
-        <div className="flex items-center justify-between">
-          <span className="text-gray-500">Aceitas 30d:</span>
-          <div className="flex items-center space-x-1">
-            <TrendingUp className="w-3 h-3 text-green-500" />
-            <span className="font-medium text-green-600">{partnership.accepted_30d}</span>
-          </div>
-        </div>
-        
         <div className="pt-2 border-t border-gray-100">
           <div className="flex items-center justify-between">
             <span className="text-gray-500">Parceria desde:</span>
             <span className="text-gray-700">{formatDate(partnership.created_at)}</span>
           </div>
-          {partnership.last_donation && (
-            <div className="flex items-center justify-between mt-1">
-              <span className="text-gray-500">Última doação:</span>
-              <span className="text-gray-700">{formatDateTime(partnership.last_donation)}</span>
-            </div>
-          )}
         </div>
       </div>
     </div>
