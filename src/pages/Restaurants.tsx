@@ -517,21 +517,13 @@ function PartnershipCard({ partnership, onToggleFavorite, onRemove, isUpdating }
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-all duration-200">
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-start justify-between mb-3">
         <div className="flex items-start space-x-3 flex-1 min-w-0">
           <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
             <Building2 className="w-5 h-5 text-green-600" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-2 mb-1">
-              <h5 className="font-medium text-gray-900 text-sm truncate">{partnership.osc.name}</h5>
-            </div>
-            {partnership.is_favorite && (
-              <div className="flex items-center space-x-1 mb-2">
-                <Heart className="w-3 h-3 text-red-500 fill-current" />
-                <span className="text-xs font-medium text-red-600">Favorita</span>
-              </div>
-            )}
+            <h5 className="font-medium text-gray-900 text-sm truncate mb-2">{partnership.osc.name}</h5>
             {partnership.osc.city && partnership.osc.uf && (
               <div className="flex items-center text-xs text-gray-600">
                 <MapPin className="w-3 h-3 mr-1" />
@@ -543,47 +535,46 @@ function PartnershipCard({ partnership, onToggleFavorite, onRemove, isUpdating }
                 {partnership.osc.street}, {partnership.osc.number}
               </div>
             )}
+            <div className="flex items-center text-xs text-gray-600 mt-2">
+              <span className="text-gray-500">Distância:</span>
+              <span className="font-medium text-gray-900 ml-1">{partnership.distance_km.toFixed(1)} km</span>
+            </div>
           </div>
+        </div>
+        
+        {/* Botões no topo direito */}
+        <div className="flex flex-col space-y-2 flex-shrink-0">
+          <button
+            onClick={() => onToggleFavorite(!partnership.is_favorite)}
+            disabled={isUpdating}
+            className={`flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-50 ${
+              partnership.is_favorite
+                ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                : 'bg-gray-100 text-gray-700 hover:bg-yellow-100 hover:text-yellow-700'
+            }`}
+            title={partnership.is_favorite ? 'Remover dos favoritos' : 'Marcar como favorita'}
+          >
+            <Heart className={`w-3 h-3 ${partnership.is_favorite ? 'fill-current' : ''}`} />
+            <span>{partnership.is_favorite ? 'Favorita' : 'Favoritar'}</span>
+          </button>
+          
+          <button
+            onClick={onRemove}
+            disabled={isUpdating}
+            className="flex items-center space-x-1 px-2 py-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-xs font-medium disabled:opacity-50"
+            title="Remover parceria"
+          >
+            <Trash2 className="w-3 h-3" />
+            <span>Remover</span>
+          </button>
         </div>
       </div>
 
-      {/* Ações */}
-      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-        <button
-          onClick={() => onToggleFavorite(!partnership.is_favorite)}
-          disabled={isUpdating}
-          className={`flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-50 ${
-            partnership.is_favorite
-              ? 'bg-red-100 text-red-700 hover:bg-red-200'
-              : 'bg-gray-100 text-gray-700 hover:bg-yellow-100 hover:text-yellow-700'
-          }`}
-          title={partnership.is_favorite ? 'Remover dos favoritos' : 'Marcar como favorita'}
-        >
-          <Heart className={`w-3 h-3 ${partnership.is_favorite ? 'fill-current' : ''}`} />
-          <span>{partnership.is_favorite ? 'Favorita' : 'Favoritar'}</span>
-        </button>
-        
-        <button
-          onClick={onRemove}
-          disabled={isUpdating}
-          className="flex items-center space-x-1 px-2 py-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-xs font-medium disabled:opacity-50"
-          title="Remover parceria"
-        >
-          <Trash2 className="w-3 h-3" />
-          <span>Remover</span>
-        </button>
-      </div>
-      <div className="space-y-2 text-xs">
-        <div className="flex items-center justify-between">
-          <span className="text-gray-500">Distância:</span>
-          <span className="font-medium text-gray-900">{partnership.distance_km.toFixed(1)} km</span>
-        </div>
-        
-        <div className="pt-2 border-t border-gray-100">
-          <div className="flex items-center justify-between">
-            <span className="text-gray-500">Parceria desde:</span>
-            <span className="text-gray-700">{formatDate(partnership.created_at)}</span>
-          </div>
+      {/* Data da parceria */}
+      <div className="pt-3 border-t border-gray-100">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-gray-500">Parceria desde:</span>
+          <span className="text-gray-700">{formatDate(partnership.created_at)}</span>
         </div>
       </div>
     </div>
