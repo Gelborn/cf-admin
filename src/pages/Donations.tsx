@@ -1,4 +1,5 @@
 import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Package,
@@ -35,6 +36,10 @@ type DonationIntent = {
   created_at: string;
   updated_at: string;
   expires_at: string | null;
+  osc: {
+    id: string;
+    name: string;
+  };
 };
 
 type PackageInfo = {
@@ -227,6 +232,17 @@ interface DonationCardProps {
 }
 
 function DonationCard({ donation }: DonationCardProps) {
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Atualiza o timer a cada segundo
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR', {
       day: '2-digit',
@@ -242,7 +258,7 @@ function DonationCard({ donation }: DonationCardProps) {
       const waitingIntent = donation.donation_intents.find(i => i.status === 'waiting_response');
       if (waitingIntent?.expires_at) {
         const expiresAt = new Date(waitingIntent.expires_at);
-        const now = new Date();
+        const now = currentTime;
         const diffMs = expiresAt.getTime() - now.getTime();
         
         if (diffMs <= 0) return { text: 'Expirado', color: 'text-red-600', urgent: true };
@@ -259,7 +275,7 @@ function DonationCard({ donation }: DonationCardProps) {
       }
     } else if (donation.donation_status === 'accepted' && donation.pickup_deadline_at) {
       const deadlineAt = new Date(donation.pickup_deadline_at);
-      const now = new Date();
+      const now = currentTime;
       const diffMs = deadlineAt.getTime() - now.getTime();
       
       if (diffMs <= 0) return { text: 'Prazo vencido', color: 'text-red-600', urgent: true };
@@ -305,12 +321,20 @@ function DonationCard({ donation }: DonationCardProps) {
           </div>
           
           {timeInfo && (
-            <div className={`flex items-center space-x-2 px-3 py-2 rounded-lg ${
+            <div className={`flex flex-col items-end space-y-1 px-4 py-3 rounded-lg ${
               timeInfo.urgent ? 'bg-red-100' : 'bg-yellow-100'
             }`}>
-              <Timer className={`h-4 w-4 ${timeInfo.color}`} />
-              <span className={`text-sm font-medium ${timeInfo.color}`}>
-                {timeInfo.text}
+              <div className="flex items-center space-x-2">
+                <Timer className={`h-4 w-4 ${timeInfo.color}`} />
+                <span className={`text-sm font-bold ${timeInfo.color}`}>
+                  {timeInfo.text}
+                </span>
+              </div>
+              <span className="text-xs text-gray-600">
+                {donation.donation_status === 'pending' 
+                  ? 'Tempo restante para a OSC aceitar'
+                  : 'Tempo restante para OSC retirar'
+                }
               </span>
             </div>
           )}
@@ -486,13 +510,13 @@ const IntentTimeline = ({ intents }: { intents: DonationIntent[] }) => {
     }
   };
 
-  const getIntentLabel = (status: string) => {
+  const getIntentLabel = (status: string, oscName: string) => {
     switch (status) {
-      case 'waiting_response': return 'Aguardando resposta';
-      case 'accepted': return 'Aceita pela OSC';
-      case 'denied': return 'Negada pela OSC';
-      case 'expired': return 'Expirada';
-      case 're_routed': return 'Redirecionada';
+      case 'waiting_response': return `Ainda estamos aguardando a resposta da ${oscName}`;
+      case 'accepted': return `${oscName} aceitou a doação!`;
+      case 'denied': return `${oscName} recusou a oferta de doação`;
+      case 'expired': return `Oferta para ${oscName} expirou`;
+      case 're_routed': return `Doação redirecionada para ${oscName}`;
       default: return status;
     }
   };
@@ -507,7 +531,7 @@ const IntentTimeline = ({ intents }: { intents: DonationIntent[] }) => {
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-900">
-                {getIntentLabel(intent.status)}
+                {getIntentLabel(intent.status, intent.osc.name)}
               </span>
               <span className="text-xs text-gray-500">
                 {new Date(intent.updated_at).toLocaleDateString('pt-BR', {
