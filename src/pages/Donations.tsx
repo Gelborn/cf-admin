@@ -39,12 +39,16 @@ type DonationIntent = {
 
 type PackageInfo = {
   id: string;
-  quantity: string;
-  total_kg: string;
+  quantity: number;
+  total_kg: number;
   expires_at: string;
-  item_name: string;
-  item_category: string;
-  item_unit: string;
+  label_code: string;
+  status: string;
+  item: {
+    id: string;
+    name: string;
+    description: string;
+  };
 };
 
 type OngoingDonation = {
@@ -63,7 +67,7 @@ type OngoingDonation = {
   osc_name: string;
   osc_phone: string;
   osc_email: string | null;
-  distance_km: string | null;
+  distance_km: number;
   donation_intents: DonationIntent[];
   packages: PackageInfo[];
 };
@@ -275,7 +279,7 @@ function DonationCard({ donation }: DonationCardProps) {
   };
 
   const timeInfo = getTimeRemaining();
-  const totalKg = donation.packages.reduce((sum, pkg) => sum + parseFloat(pkg.total_kg), 0);
+  const totalKg = donation.packages.reduce((sum, pkg) => sum + pkg.total_kg, 0);
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
