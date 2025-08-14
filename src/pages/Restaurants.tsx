@@ -90,6 +90,7 @@ export function Restaurants() {
   const [isPartnershipModalOpen, setIsPartnershipModalOpen] = useState(false);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [hiddenAccordions, setHiddenAccordions] = useState<Set<string>>(new Set());
 
   /* ----------------------- Query: lista ----------------------- */
   const { data: restaurants, isLoading } = useQuery<RestaurantWithPartners[]>({
@@ -209,11 +210,25 @@ export function Restaurants() {
     setIsPartnershipModalOpen(true);
   };
 
+  /* toggle accordion visibility */
+  const toggleAccordion = (restaurantId: string) => {
+    setHiddenAccordions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(restaurantId)) {
+        newSet.delete(restaurantId);
+      } else {
+        newSet.add(restaurantId);
+      }
+      return newSet;
+    });
+  };
   /* filtrar restaurantes por busca */
   const filteredRestaurants = restaurants?.filter(restaurant =>
     restaurant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     restaurant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    restaurant.city?.toLowerCase().includes(searchTerm.toLowerCase())
+    restaurant.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    restaurant.cnpj?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    restaurant.code?.toLowerCase().includes(searchTerm.toLowerCase())
   )
   // Ordenar por número de parcerias (mais parcerias primeiro)
   .sort((a, b) => {
@@ -255,7 +270,7 @@ export function Restaurants() {
         </div>
 
         {/* ---------- STAT CARDS ---------- */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <StatCard
             icon={<Users className="h-8 w-8 text-green-600" />}
             label="Total de Restaurantes"
@@ -265,11 +280,6 @@ export function Restaurants() {
             icon={<MapPin className="h-8 w-8 text-blue-600" />}
             label="Ativos"
             value={filteredRestaurants?.filter(r => r.status === 'active').length ?? 0}
-          />
-          <StatCard
-            icon={<Mail className="h-8 w-8 text-yellow-600" />}
-            label="Convites Enviados"
-            value={filteredRestaurants?.filter(r => r.status === 'invite_sent').length ?? 0}
           />
           <StatCard
             icon={<Heart className="h-8 w-8 text-red-600" />}
@@ -308,6 +318,8 @@ export function Restaurants() {
                     removePartnershipMutation.mutate({ restaurantId: r.id, oscId })
                   }
                   isUpdating={toggleFavoriteMutation.isPending || removePartnershipMutation.isPending}
+                  isAccordionHidden={hiddenAccordions.has(r.id)}
+                  onToggleAccordion={() => toggleAccordion(r.id)}
                 />
               ))}
             </div>
@@ -370,6 +382,8 @@ interface RestaurantRowProps {
   onToggleFavorite: (oscId: string, isFavorite: boolean) => void;
   onRemovePartnership: (oscId: string) => void;
   isUpdating: boolean;
+  isAccordionHidden: boolean;
+  onToggleAccordion: () => void;
 }
 
 function RestaurantRow({ 
@@ -377,7 +391,9 @@ function RestaurantRow({
   onOpenPartnership,
   onToggleFavorite,
   onRemovePartnership,
-  isUpdating
+  isUpdating,
+  isAccordionHidden,
+  onToggleAccordion
 }: RestaurantRowProps) {
   const hasPartnerships = restaurant.partnerships && restaurant.partnerships.length > 0;
   const partnerships = restaurant.partnerships || [];
@@ -450,6 +466,12 @@ function RestaurantRow({
                       </span>
                     </div>
                   )}
+                  <button
+                    onClick={onToggleAccordion}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    {isAccordionHidden ? 'Mostrar' : 'Ocultar'}
+                  </button>
                 </div>
               ) : (
                 <span className="text-gray-400 text-sm">Nenhuma parceria</span>
@@ -471,7 +493,7 @@ function RestaurantRow({
       </div>
 
       {/* Accordion de parcerias - sempre aberto se houver parcerias */}
-      {hasPartnerships && (
+      {hasPartnerships && !isAccordionHidden && (
         <div className="border-t border-gray-100 bg-gray-50">
           <div className="px-6 py-4">
             <h4 className="text-sm font-medium text-gray-900 mb-4 flex items-center">
