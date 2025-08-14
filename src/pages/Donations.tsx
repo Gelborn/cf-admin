@@ -244,6 +244,15 @@ function DonationCard({ donation }: DonationCardProps) {
     return () => clearInterval(interval);
   }, []);
 
+  // Atualiza o timer a cada segundo
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR', {
       day: '2-digit',
@@ -573,11 +582,18 @@ const IntentTimeline = ({ intents }: { intents: DonationIntent[] }) => {
 };
 
 const PackageItem = ({ package: pkg }: { package: PackageInfo }) => {
-  const isExpiringSoon = () => {
+  const getExpiryStatus = () => {
     const expiresAt = new Date(pkg.expires_at);
     const now = new Date();
-    const diffDays = Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    return diffDays <= 2;
+    const diffMs = expiresAt.getTime() - now.getTime();
+    const diffHours = diffMs / (1000 * 60 * 60);
+    
+    if (diffMs <= 0) {
+      return { status: 'expired', label: 'Vencido', color: 'bg-red-100 text-red-800' };
+    } else if (diffHours <= 48) {
+      return { status: 'expiring', label: 'Perto de vencer', color: 'bg-yellow-100 text-yellow-800' };
+    }
+    return null;
   };
 
   const formatExpiryDate = (dateString: string) => {
@@ -586,6 +602,8 @@ const PackageItem = ({ package: pkg }: { package: PackageInfo }) => {
       month: '2-digit',
     });
   };
+
+  const expiryStatus = getExpiryStatus();
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-3">
@@ -607,10 +625,10 @@ const PackageItem = ({ package: pkg }: { package: PackageInfo }) => {
         <span className="text-xs text-gray-500">
           Validade: {formatExpiryDate(pkg.expires_at)}
         </span>
-        {isExpiringSoon() && (
-          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+        {expiryStatus && (
+          <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${expiryStatus.color}`}>
             <AlertCircle className="h-3 w-3 mr-1" />
-            Vencendo
+            {expiryStatus.label}
           </span>
         )}
       </div>
