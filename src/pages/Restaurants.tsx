@@ -13,6 +13,11 @@ import {
   Heart,
   Building2,
   Search,
+  ChevronDown,
+  ChevronRight,
+  Calendar,
+  TrendingUp,
+  Package,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -47,6 +52,20 @@ interface RestaurantWithPartners {
   favorite_osc: { id: string; name: string } | null;
 }
 
+// Mock data para as parcerias (temporário)
+interface PartnershipDetail {
+  id: string;
+  name: string;
+  city: string;
+  uf: string;
+  is_favorite: boolean;
+  created_at: string;
+  distance_km: number;
+  donations_30d: number;
+  accepted_30d: number;
+  last_donation: string | null;
+}
+
 interface CreateRestaurantPayload {
   name: string;
   emailOwner: string;
@@ -71,6 +90,63 @@ export function Restaurants() {
   const [isPartnershipModalOpen, setIsPartnershipModalOpen] = useState(false);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  // Mock function para gerar dados de parceria
+  const getMockPartnerships = (restaurantId: string): PartnershipDetail[] => {
+    const mockData: PartnershipDetail[] = [
+      {
+        id: '1',
+        name: 'Instituto Beneficente São José',
+        city: 'São Paulo',
+        uf: 'SP',
+        is_favorite: true,
+        created_at: '2024-01-15T10:00:00Z',
+        distance_km: 2.3,
+        donations_30d: 12,
+        accepted_30d: 10,
+        last_donation: '2024-01-20T14:30:00Z',
+      },
+      {
+        id: '2',
+        name: 'Casa da Esperança',
+        city: 'São Paulo',
+        uf: 'SP',
+        is_favorite: false,
+        created_at: '2024-01-10T09:00:00Z',
+        distance_km: 4.7,
+        donations_30d: 8,
+        accepted_30d: 7,
+        last_donation: '2024-01-18T16:45:00Z',
+      },
+      {
+        id: '3',
+        name: 'Lar dos Idosos Santa Clara',
+        city: 'São Paulo',
+        uf: 'SP',
+        is_favorite: false,
+        created_at: '2024-01-05T11:00:00Z',
+        distance_km: 1.8,
+        donations_30d: 15,
+        accepted_30d: 13,
+        last_donation: '2024-01-19T12:15:00Z',
+      },
+    ];
+    
+    // Retorna diferentes quantidades baseado no ID do restaurante
+    const count = restaurantId.length % 4;
+    return mockData.slice(0, Math.max(1, count));
+  };
+
+  const toggleRowExpansion = (restaurantId: string) => {
+    const newExpanded = new Set(expandedRows);
+    if (newExpanded.has(restaurantId)) {
+      newExpanded.delete(restaurantId);
+    } else {
+      newExpanded.add(restaurantId);
+    }
+    setExpandedRows(newExpanded);
+  };
 
   /* ----------------------- Query: lista ----------------------- */
   const { data: restaurants, isLoading } = useQuery<RestaurantWithPartners[]>({
@@ -222,106 +298,18 @@ export function Restaurants() {
           </div>
 
           <div>
-            <table className="w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                {['Restaurante & Contato', 'Endereço', 'Parcerias', 'Status', 'Ações'].map(h => (
-                  <th
-                    key={h}
-                    className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredRestaurants?.map((r) => (
-                  <tr key={r.id} className="hover:bg-gray-50">
-                    {/* Restaurante & Contato */}
-                    <td className="px-6 py-6">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                          <Users className="h-5 w-5 text-blue-600" />
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{r.name}</div>
-                          <div className="mt-1 space-y-1">
-                            <div className="flex items-center text-sm text-gray-600">
-                              <Mail className="h-3 w-3 mr-2 text-gray-400" />
-                              {r.email}
-                            </div>
-                            {r.phone && (
-                              <div className="flex items-center text-sm text-gray-600">
-                                <Phone className="h-3 w-3 mr-2 text-gray-400" />
-                                {r.phone}
-                              </div>
-                            )}
-                            {r.cnpj && (
-                              <div className="text-sm text-gray-500">
-                                CNPJ: {r.cnpj}
-                              </div>
-                            )}
-                            {r.code && (
-                              <div className="text-sm text-gray-500">
-                                Código: {r.code}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Endereço */}
-                    <td className="px-6 py-6">
-                      <div className="flex items-center text-sm text-gray-900 mb-1">
-                        <MapPin className="h-4 w-4 mr-2 text-gray-400" />
-                        {r.city}, {r.uf}
-                      </div>
-                      <div className="text-sm text-gray-500 ml-6">
-                        {r.street}, {r.number} • CEP: {r.cep}
-                      </div>
-                    </td>
-
-                    {/* Parcerias */}
-                    <td className="px-6 py-6">
-                      {r.partners_list?.length ? (
-                        <div className="space-y-1 text-sm text-gray-900">
-                          <div className="flex items-center">
-                            <Building2 className="h-4 w-4 mr-2 text-blue-500" />
-                            <span className="font-medium">{r.partners_list.length} parceria(s)</span>
-                          </div>
-                          {r.favorite_osc && (
-                            <div className="flex items-center">
-                              <Heart className="h-3 w-3 mr-1 text-red-500 fill-current" />
-                              <span className="text-xs text-gray-600">
-                                Favorita: {r.favorite_osc.name}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 text-sm">Nenhuma parceria</span>
-                      )}
-                    </td>
-
-                    {/* Status */}
-                    <td className="px-6 py-6">
-                      <StatusPill status={r.status} />
-                    </td>
-
-                    {/* Ações */}
-                    <td className="px-6 py-6 text-sm font-medium">
-                      <button
-                        onClick={() => handleOpenNewPartnership(r.id)}
-                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
-                      >
-                        <Users className="h-3 w-3 mr-1" />
-                        Gerir Parcerias
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="divide-y divide-gray-200">
+              {filteredRestaurants?.map((r) => (
+                <RestaurantRow
+                  key={r.id}
+                  restaurant={r}
+                  isExpanded={expandedRows.has(r.id)}
+                  onToggleExpansion={() => toggleRowExpansion(r.id)}
+                  onOpenPartnership={() => handleOpenNewPartnership(r.id)}
+                  partnerships={getMockPartnerships(r.id)}
+                />
+              ))}
+            </div>
           </div>
 
           {/* Empty state */}
@@ -368,6 +356,234 @@ export function Restaurants() {
         onClose={() => setIsPartnershipModalOpen(false)}
         restaurantId={selectedRestaurantId}
       />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Componente de linha do restaurante com accordion                    */
+/* ------------------------------------------------------------------ */
+interface RestaurantRowProps {
+  restaurant: RestaurantWithPartners;
+  isExpanded: boolean;
+  onToggleExpansion: () => void;
+  onOpenPartnership: () => void;
+  partnerships: PartnershipDetail[];
+}
+
+function RestaurantRow({ 
+  restaurant, 
+  isExpanded, 
+  onToggleExpansion, 
+  onOpenPartnership,
+  partnerships 
+}: RestaurantRowProps) {
+  const hasPartnerships = partnerships.length > 0;
+
+  return (
+    <div className="bg-white">
+      {/* Linha principal do restaurante */}
+      <div className="px-6 py-6 hover:bg-gray-50 transition-colors">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center flex-1 min-w-0">
+            {/* Avatar e info básica */}
+            <div className="flex items-center">
+              <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <Users className="h-6 w-6 text-blue-600" />
+              </div>
+              <div className="ml-4 flex-1 min-w-0">
+                <div className="flex items-center space-x-3">
+                  <h3 className="text-lg font-medium text-gray-900 truncate">{restaurant.name}</h3>
+                  <StatusPill status={restaurant.status} />
+                </div>
+                <div className="mt-1 space-y-1">
+                  <div className="flex items-center text-sm text-gray-600">
+                    <Mail className="h-3 w-3 mr-2 text-gray-400 flex-shrink-0" />
+                    <span className="truncate">{restaurant.email}</span>
+                  </div>
+                  {restaurant.phone && (
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Phone className="h-3 w-3 mr-2 text-gray-400 flex-shrink-0" />
+                      {restaurant.phone}
+                    </div>
+                  )}
+                  {restaurant.cnpj && (
+                    <div className="text-sm text-gray-500">
+                      CNPJ: {restaurant.cnpj}
+                    </div>
+                  )}
+                  {restaurant.code && (
+                    <div className="text-sm text-gray-500">
+                      Código: {restaurant.code}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Endereço */}
+            <div className="ml-8 flex-shrink-0 hidden lg:block">
+              <div className="flex items-center text-sm text-gray-900 mb-1">
+                <MapPin className="h-4 w-4 mr-2 text-gray-400" />
+                {restaurant.city}, {restaurant.uf}
+              </div>
+              <div className="text-sm text-gray-500 ml-6">
+                {restaurant.street}, {restaurant.number}
+              </div>
+            </div>
+
+            {/* Info de parcerias */}
+            <div className="ml-8 flex-shrink-0 hidden md:block">
+              {hasPartnerships ? (
+                <div className="space-y-1 text-sm">
+                  <div className="flex items-center text-gray-900">
+                    <Building2 className="h-4 w-4 mr-2 text-blue-500" />
+                    <span className="font-medium">{partnerships.length} parceria(s)</span>
+                  </div>
+                  {partnerships.find(p => p.is_favorite) && (
+                    <div className="flex items-center">
+                      <Heart className="h-3 w-3 mr-1 text-red-500 fill-current" />
+                      <span className="text-xs text-gray-600">
+                        Favorita: {partnerships.find(p => p.is_favorite)?.name}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <span className="text-gray-400 text-sm">Nenhuma parceria</span>
+              )}
+            </div>
+          </div>
+
+          {/* Ações */}
+          <div className="flex items-center space-x-3 ml-4">
+            <button
+              onClick={onOpenPartnership}
+              className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+            >
+              <Users className="h-3 w-3 mr-1" />
+              Gerir Parcerias
+            </button>
+            
+            {hasPartnerships && (
+              <button
+                onClick={onToggleExpansion}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                title={isExpanded ? 'Recolher parcerias' : 'Expandir parcerias'}
+              >
+                {isExpanded ? (
+                  <ChevronDown className="h-5 w-5" />
+                ) : (
+                  <ChevronRight className="h-5 w-5" />
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Accordion de parcerias */}
+      {hasPartnerships && isExpanded && (
+        <div className="border-t border-gray-100 bg-gray-50">
+          <div className="px-6 py-4">
+            <h4 className="text-sm font-medium text-gray-900 mb-4 flex items-center">
+              <Building2 className="h-4 w-4 mr-2 text-blue-500" />
+              Parcerias Ativas ({partnerships.length})
+            </h4>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {partnerships.map((partnership) => (
+                <PartnershipCard key={partnership.id} partnership={partnership} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Card de parceria individual                                         */
+/* ------------------------------------------------------------------ */
+interface PartnershipCardProps {
+  partnership: PartnershipDetail;
+}
+
+function PartnershipCard({ partnership }: PartnershipCardProps) {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
+
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-all duration-200">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-start space-x-3 flex-1 min-w-0">
+          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <Building2 className="w-5 h-5 text-green-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center space-x-2 mb-1">
+              <h5 className="font-medium text-gray-900 text-sm truncate">{partnership.name}</h5>
+              {partnership.is_favorite && (
+                <Heart className="w-3 h-3 text-red-500 fill-current flex-shrink-0" />
+              )}
+            </div>
+            <div className="flex items-center text-xs text-gray-600">
+              <MapPin className="w-3 h-3 mr-1" />
+              {partnership.city}, {partnership.uf}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-2 text-xs">
+        <div className="flex items-center justify-between">
+          <span className="text-gray-500">Distância:</span>
+          <span className="font-medium text-gray-900">{partnership.distance_km.toFixed(1)} km</span>
+        </div>
+        
+        <div className="flex items-center justify-between">
+          <span className="text-gray-500">Doações 30d:</span>
+          <div className="flex items-center space-x-1">
+            <Package className="w-3 h-3 text-blue-500" />
+            <span className="font-medium text-gray-900">{partnership.donations_30d}</span>
+          </div>
+        </div>
+        
+        <div className="flex items-center justify-between">
+          <span className="text-gray-500">Aceitas 30d:</span>
+          <div className="flex items-center space-x-1">
+            <TrendingUp className="w-3 h-3 text-green-500" />
+            <span className="font-medium text-green-600">{partnership.accepted_30d}</span>
+          </div>
+        </div>
+        
+        <div className="pt-2 border-t border-gray-100">
+          <div className="flex items-center justify-between">
+            <span className="text-gray-500">Parceria desde:</span>
+            <span className="text-gray-700">{formatDate(partnership.created_at)}</span>
+          </div>
+          {partnership.last_donation && (
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-gray-500">Última doação:</span>
+              <span className="text-gray-700">{formatDateTime(partnership.last_donation)}</span>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
