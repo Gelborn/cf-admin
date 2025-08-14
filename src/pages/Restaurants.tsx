@@ -18,6 +18,7 @@ import {
   Calendar,
   TrendingUp,
   Package,
+  Trash2,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -104,6 +105,54 @@ export function Restaurants() {
     },
   });
 
+  /* ---------------------- Mutation: toggle favorite -------------------- */
+  const toggleFavoriteMutation = useMutation({
+    mutationFn: async ({ restaurantId, oscId, isFavorite }: { restaurantId: string; oscId: string; isFavorite: boolean }) => {
+      // Primeiro, remove favorita de todas as outras
+      if (isFavorite) {
+        await supabase
+          .from('partnerships')
+          .update({ is_favorite: false })
+          .eq('restaurant_id', restaurantId);
+      }
+      
+      // Depois, define a nova favorita
+      const { error } = await supabase
+        .from('partnerships')
+        .update({ is_favorite: isFavorite })
+        .eq('restaurant_id', restaurantId)
+        .eq('osc_id', oscId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['restaurants'] });
+      toast.success('Favorita atualizada!');
+    },
+    onError: () => {
+      toast.error('Erro ao atualizar favorita');
+    },
+  });
+
+  /* ---------------------- Mutation: remove partnership -------------------- */
+  const removePartnershipMutation = useMutation({
+    mutationFn: async ({ restaurantId, oscId }: { restaurantId: string; oscId: string }) => {
+      const { error } = await supabase
+        .from('partnerships')
+        .delete()
+        .eq('restaurant_id', restaurantId)
+        .eq('osc_id', oscId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['restaurants'] });
+      toast.success('Parceria removida com sucesso!');
+    },
+    onError: () => {
+      toast.error('Erro ao remover parceria');
+    },
+  });
   /* ---------------------- Mutation: create -------------------- */
   const createRestaurantMutation = useMutation({
     mutationFn: async (payload: CreateRestaurantPayload) => {
@@ -165,7 +214,13 @@ export function Restaurants() {
     restaurant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     restaurant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     restaurant.city?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  )
+  // Ordenar por número de parcerias (mais parcerias primeiro)
+  .sort((a, b) => {
+    const aPartnerships = a.partnerships?.length || 0;
+    const bPartnerships = b.partnerships?.length || 0;
+    return bPartnerships - aPartnerships;
+  });
 
   /* --------------------------- UI ----------------------------- */
   if (isLoading) {
@@ -246,6 +301,13 @@ export function Restaurants() {
                   key={r.id}
                   restaurant={r}
                   onOpenPartnership={() => handleOpenNewPartnership(r.id)}
+                  onToggleFavorite={(oscId, isFavorite) => 
+                    toggleFavoriteMutation.mutate({ restaurantId: r.id, oscId, isFavorite })
+                  }
+                  onRemovePartnership={(oscId) => 
+                    removePartnershipMutation.mutate({ restaurantId: r.id, oscId })
+                  }
+                  isUpdating={toggleFavoriteMutation.isPending || removePartnershipMutation.isPending}
                 />
               ))}
             </div>
@@ -305,11 +367,17 @@ export function Restaurants() {
 interface RestaurantRowProps {
   restaurant: RestaurantWithPartners;
   onOpenPartnership: () => void;
+  onToggleFavorite: (oscId: string, isFavorite: boolean) => void;
+  onRemovePartnership: (oscId: string) => void;
+  isUpdating: boolean;
 }
 
 function RestaurantRow({ 
   restaurant, 
-  onOpenPartnership
+  onOpenPartnership,
+  onToggleFavorite,
+  onRemovePartnership,
+  isUpdating
 }: RestaurantRowProps) {
   const hasPartnerships = restaurant.partnerships && restaurant.partnerships.length > 0;
   const partnerships = restaurant.partnerships || [];
@@ -318,14 +386,14 @@ function RestaurantRow({
     <div className="bg-white">
       {/* Linha principal do restaurante */}
       <div className="px-6 py-6 hover:bg-gray-50 transition-colors">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-8">
+          <div className="flex items-center flex-1 min-w-0 gap-6">
             {/* Avatar e info básica */}
-            <div className="flex items-center">
+            <div className="flex items-center flex-shrink-0">
               <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
                 <Users className="h-6 w-6 text-blue-600" />
               </div>
-              <div className="ml-4 flex-1 min-w-0">
+              <div className="ml-4 min-w-0 w-80">
                 <div className="flex items-center space-x-3">
                   <h3 className="text-lg font-medium text-gray-900 truncate">{restaurant.name}</h3>
                   <StatusPill status={restaurant.status} />
@@ -356,7 +424,7 @@ function RestaurantRow({
             </div>
 
             {/* Endereço */}
-            <div className="ml-8 flex-shrink-0 hidden lg:block">
+            <div className="flex-shrink-0 hidden lg:block w-64">
               <div className="flex items-center text-sm text-gray-900 mb-1">
                 <MapPin className="h-4 w-4 mr-2 text-gray-400" />
                 {restaurant.city}, {restaurant.uf}
@@ -367,7 +435,7 @@ function RestaurantRow({
             </div>
 
             {/* Info de parcerias */}
-            <div className="ml-8 flex-shrink-0 hidden md:block">
+            <div className="flex-shrink-0 hidden md:block w-48">
               {hasPartnerships ? (
                 <div className="space-y-1 text-sm">
                   <div className="flex items-center text-gray-900">
@@ -390,7 +458,7 @@ function RestaurantRow({
           </div>
 
           {/* Ações */}
-          <div className="flex items-center space-x-3 ml-4">
+          <div className="flex items-center space-x-3 flex-shrink-0">
             <button
               onClick={onOpenPartnership}
               className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
@@ -412,7 +480,13 @@ function RestaurantRow({
             </h4>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {partnerships.map((partnership) => (
-                <PartnershipCard key={partnership.osc.id} partnership={partnership} />
+                <PartnershipCard 
+                  key={partnership.osc.id} 
+                  partnership={partnership}
+                  onToggleFavorite={(isFavorite) => onToggleFavorite(partnership.osc.id, isFavorite)}
+                  onRemove={() => onRemovePartnership(partnership.osc.id)}
+                  isUpdating={isUpdating}
+                />
               ))}
             </div>
           </div>
@@ -427,9 +501,12 @@ function RestaurantRow({
 /* ------------------------------------------------------------------ */
 interface PartnershipCardProps {
   partnership: Partnership;
+  onToggleFavorite: (isFavorite: boolean) => void;
+  onRemove: () => void;
+  isUpdating: boolean;
 }
 
-function PartnershipCard({ partnership }: PartnershipCardProps) {
+function PartnershipCard({ partnership, onToggleFavorite, onRemove, isUpdating }: PartnershipCardProps) {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR', {
       day: '2-digit',
@@ -440,7 +517,7 @@ function PartnershipCard({ partnership }: PartnershipCardProps) {
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-all duration-200">
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex items-start justify-between mb-4">
         <div className="flex items-start space-x-3 flex-1 min-w-0">
           <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
             <Building2 className="w-5 h-5 text-green-600" />
@@ -448,10 +525,13 @@ function PartnershipCard({ partnership }: PartnershipCardProps) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2 mb-1">
               <h5 className="font-medium text-gray-900 text-sm truncate">{partnership.osc.name}</h5>
-              {partnership.is_favorite && (
-                <Heart className="w-3 h-3 text-red-500 fill-current flex-shrink-0" />
-              )}
             </div>
+            {partnership.is_favorite && (
+              <div className="flex items-center space-x-1 mb-2">
+                <Heart className="w-3 h-3 text-red-500 fill-current" />
+                <span className="text-xs font-medium text-red-600">Favorita</span>
+              </div>
+            )}
             {partnership.osc.city && partnership.osc.uf && (
               <div className="flex items-center text-xs text-gray-600">
                 <MapPin className="w-3 h-3 mr-1" />
@@ -467,6 +547,32 @@ function PartnershipCard({ partnership }: PartnershipCardProps) {
         </div>
       </div>
 
+      {/* Ações */}
+      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+        <button
+          onClick={() => onToggleFavorite(!partnership.is_favorite)}
+          disabled={isUpdating}
+          className={`flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-50 ${
+            partnership.is_favorite
+              ? 'bg-red-100 text-red-700 hover:bg-red-200'
+              : 'bg-gray-100 text-gray-700 hover:bg-yellow-100 hover:text-yellow-700'
+          }`}
+          title={partnership.is_favorite ? 'Remover dos favoritos' : 'Marcar como favorita'}
+        >
+          <Heart className={`w-3 h-3 ${partnership.is_favorite ? 'fill-current' : ''}`} />
+          <span>{partnership.is_favorite ? 'Favorita' : 'Favoritar'}</span>
+        </button>
+        
+        <button
+          onClick={onRemove}
+          disabled={isUpdating}
+          className="flex items-center space-x-1 px-2 py-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-xs font-medium disabled:opacity-50"
+          title="Remover parceria"
+        >
+          <Trash2 className="w-3 h-3" />
+          <span>Remover</span>
+        </button>
+      </div>
       <div className="space-y-2 text-xs">
         <div className="flex items-center justify-between">
           <span className="text-gray-500">Distância:</span>
