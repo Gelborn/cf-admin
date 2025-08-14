@@ -399,17 +399,17 @@ function RestaurantRow({
   const partnerships = restaurant.partnerships || [];
 
   return (
-    <div className="bg-white">
+    <div className="bg-white border-b-2 border-gray-100">
       {/* Linha principal do restaurante */}
-      <div className="px-6 py-6 hover:bg-gray-50 transition-colors">
-        <div className="flex items-center justify-between gap-8">
-          <div className="flex items-center flex-1 min-w-0 gap-6">
+      <div className="px-6 py-6 hover:bg-blue-50/30 transition-colors bg-white">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center flex-1 min-w-0">
             {/* Avatar e info básica */}
-            <div className="flex items-center flex-shrink-0">
+            <div className="flex items-center flex-shrink-0 w-80">
               <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
                 <Users className="h-6 w-6 text-blue-600" />
               </div>
-              <div className="ml-4 min-w-0 w-80">
+              <div className="ml-4 min-w-0 flex-1">
                 <div className="flex items-center space-x-3">
                   <h3 className="text-lg font-medium text-gray-900 truncate">{restaurant.name}</h3>
                   <StatusPill status={restaurant.status} />
@@ -440,7 +440,7 @@ function RestaurantRow({
             </div>
 
             {/* Endereço */}
-            <div className="flex-shrink-0 hidden lg:block w-64">
+            <div className="flex-shrink-0 hidden lg:block w-72 px-4">
               <div className="flex items-center text-sm text-gray-900 mb-1">
                 <MapPin className="h-4 w-4 mr-2 text-gray-400" />
                 {restaurant.city}, {restaurant.uf}
@@ -451,7 +451,7 @@ function RestaurantRow({
             </div>
 
             {/* Info de parcerias */}
-            <div className="flex-shrink-0 hidden md:block w-48">
+            <div className="flex-shrink-0 hidden md:block w-56 px-4">
               {hasPartnerships ? (
                 <div className="space-y-1 text-sm">
                   <div className="flex items-center text-gray-900">
@@ -480,7 +480,7 @@ function RestaurantRow({
           </div>
 
           {/* Ações */}
-          <div className="flex items-center space-x-3 flex-shrink-0">
+          <div className="flex items-center space-x-3 flex-shrink-0 w-40 justify-end">
             <button
               onClick={onOpenPartnership}
               className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
@@ -494,8 +494,8 @@ function RestaurantRow({
 
       {/* Accordion de parcerias - sempre aberto se houver parcerias */}
       {hasPartnerships && !isAccordionHidden && (
-        <div className="border-t border-gray-100 bg-gray-50">
-          <div className="px-6 py-4">
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-t border-gray-200">
+          <div className="px-8 py-5">
             <h4 className="text-sm font-medium text-gray-900 mb-4 flex items-center">
               <Building2 className="h-4 w-4 mr-2 text-blue-500" />
               Parcerias Ativas ({partnerships.length})
@@ -538,7 +538,7 @@ function PartnershipCard({ partnership, onToggleFavorite, onRemove, isUpdating }
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-all duration-200">
+    <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-lg hover:border-blue-200 transition-all duration-200">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-start space-x-3 flex-1 min-w-0">
           <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -593,7 +593,7 @@ function PartnershipCard({ partnership, onToggleFavorite, onRemove, isUpdating }
       </div>
 
       {/* Data da parceria */}
-      <div className="pt-3 border-t border-gray-100">
+      <div className="pt-3 border-t border-gray-150">
         <div className="flex items-center justify-between text-xs">
           <span className="text-gray-500">Parceria desde:</span>
           <span className="text-gray-700">{formatDate(partnership.created_at)}</span>
