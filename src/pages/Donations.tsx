@@ -111,6 +111,14 @@ function useOngoingDonations() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Utils                                                               */
+/* ------------------------------------------------------------------ */
+const formatKm = (km: number) => {
+  if (!Number.isFinite(km)) return '';
+  return km % 1 === 0 ? `${km} km` : `${km.toFixed(1)} km`;
+};
+
+/* ------------------------------------------------------------------ */
 /* Componente Principal                                                */
 /* ------------------------------------------------------------------ */
 export function Donations() {
@@ -235,22 +243,10 @@ function DonationCard({ donation }: DonationCardProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showRedirectModal, setShowRedirectModal] = useState(false);
 
-  // Atualiza o timer a cada segundo
+  // Single ticking clock (every second)
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // Atualiza o timer a cada segundo
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(interval);
+    const id = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(id);
   }, []);
 
   const formatDate = (dateString: string) => {
@@ -263,44 +259,34 @@ function DonationCard({ donation }: DonationCardProps) {
     });
   };
 
+  const formatHMS = (ms: number) => {
+    if (ms <= 0) return '00:00:00';
+    const totalSec = Math.floor(ms / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${pad(h)}:${pad(m)}:${pad(s)}`;
+  };
+
   const getTimeRemaining = () => {
+    let diffMs = 0;
+
     if (donation.donation_status === 'pending') {
       const waitingIntent = donation.donation_intents.find(i => i.status === 'waiting_response');
       if (waitingIntent?.expires_at) {
-        const expiresAt = new Date(waitingIntent.expires_at);
-        const now = currentTime;
-        const diffMs = expiresAt.getTime() - now.getTime();
-        
+        diffMs = new Date(waitingIntent.expires_at).getTime() - currentTime.getTime();
         if (diffMs <= 0) return { text: 'Expirado', color: 'text-red-600', urgent: true };
-        
-        const hours = Math.floor(diffMs / (1000 * 60 * 60));
-        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-        
-        const urgent = hours < 2;
-        return {
-          text: `${hours}h ${minutes}min`,
-          color: urgent ? 'text-red-600' : 'text-yellow-600',
-          urgent
-        };
+        const urgent = diffMs <= 2 * 60 * 60 * 1000; // < 2h
+        return { text: formatHMS(diffMs), color: urgent ? 'text-red-600' : 'text-yellow-600', urgent };
       }
     } else if (donation.donation_status === 'accepted' && donation.pickup_deadline_at) {
-      const deadlineAt = new Date(donation.pickup_deadline_at);
-      const now = currentTime;
-      const diffMs = deadlineAt.getTime() - now.getTime();
-      
+      diffMs = new Date(donation.pickup_deadline_at).getTime() - currentTime.getTime();
       if (diffMs <= 0) return { text: 'Prazo vencido', color: 'text-red-600', urgent: true };
-      
-      const hours = Math.floor(diffMs / (1000 * 60 * 60));
-      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-      
-      const urgent = hours < 4;
-      return {
-        text: `${hours}h ${minutes}min`,
-        color: urgent ? 'text-red-600' : 'text-blue-600',
-        urgent
-      };
+      const urgent = diffMs <= 4 * 60 * 60 * 1000; // < 4h
+      return { text: formatHMS(diffMs), color: urgent ? 'text-red-600' : 'text-blue-600', urgent };
     }
-    
+
     return null;
   };
 
@@ -367,8 +353,10 @@ function DonationCard({ donation }: DonationCardProps) {
                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mb-1">
                   <TrendingUp className="h-4 w-4 text-blue-600" />
                 </div>
-                {donation.distance_km && (
-                  <span className="text-xs text-gray-500">{parseFloat(donation.distance_km).toFixed(1)} km</span>
+                {donation.distance_km !== null && donation.distance_km !== undefined && (
+                  <span className="text-xs text-gray-500">
+                    {formatKm(donation.distance_km)}
+                  </span>
                 )}
               </div>
               
@@ -555,7 +543,7 @@ const IntentTimeline = ({ intents }: { intents: DonationIntent[] }) => {
 
   return (
     <div className="space-y-3">
-      {sortedIntents.map((intent, index) => (
+      {sortedIntents.map((intent) => (
         <div key={intent.id} className="flex items-center space-x-3">
           <div className="flex-shrink-0 w-8 h-8 bg-white border-2 border-gray-200 rounded-full flex items-center justify-center">
             {getIntentIcon(intent.status)}
