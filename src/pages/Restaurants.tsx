@@ -403,9 +403,9 @@ function RestaurantRow({
       {/* Linha principal do restaurante */}
       <div className="px-6 py-6 hover:bg-blue-50/30 transition-colors bg-white">
         <div className="flex items-center justify-between">
-          <div className="flex items-center flex-1 min-w-0">
+          <div className="flex items-center flex-1 min-w-0 space-x-6">
             {/* Avatar e info básica */}
-            <div className="flex items-center flex-shrink-0 w-80">
+            <div className="flex items-center flex-shrink-0 min-w-0" style={{ width: '320px' }}>
               <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
                 <Users className="h-6 w-6 text-blue-600" />
               </div>
@@ -440,7 +440,7 @@ function RestaurantRow({
             </div>
 
             {/* Endereço */}
-            <div className="flex-shrink-0 hidden lg:block w-72 px-4">
+            <div className="flex-shrink-0 hidden lg:block min-w-0" style={{ width: '280px' }}>
               <div className="flex items-center text-sm text-gray-900 mb-1">
                 <MapPin className="h-4 w-4 mr-2 text-gray-400" />
                 {restaurant.city}, {restaurant.uf}
@@ -451,7 +451,7 @@ function RestaurantRow({
             </div>
 
             {/* Info de parcerias */}
-            <div className="flex-shrink-0 hidden md:block w-56 px-4">
+            <div className="flex-shrink-0 hidden md:block min-w-0" style={{ width: '220px' }}>
               {hasPartnerships ? (
                 <div className="space-y-1 text-sm">
                   <div className="flex items-center text-gray-900">
@@ -480,7 +480,7 @@ function RestaurantRow({
           </div>
 
           {/* Ações */}
-          <div className="flex items-center space-x-3 flex-shrink-0 w-40 justify-end">
+          <div className="flex items-center flex-shrink-0 ml-4">
             <button
               onClick={onOpenPartnership}
               className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
