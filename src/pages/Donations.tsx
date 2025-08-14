@@ -544,13 +544,14 @@ const PackageItem = ({ package: pkg }: { package: PackageInfo }) => {
     <div className="bg-white rounded-lg border border-gray-200 p-3">
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1 min-w-0">
-          <h6 className="text-sm font-medium text-gray-900 truncate">{pkg.item_name}</h6>
-          <p className="text-xs text-gray-500">{pkg.item_category}</p>
+          <h6 className="text-sm font-medium text-gray-900 truncate">{pkg.item.name}</h6>
+          <p className="text-xs text-gray-500">{pkg.item.description}</p>
+          <p className="text-xs text-gray-400 mt-1">Código: {pkg.label_code}</p>
         </div>
         <div className="text-right flex-shrink-0 ml-2">
-          <div className="text-sm font-bold text-gray-900">{parseFloat(pkg.total_kg).toFixed(1)} kg</div>
+          <div className="text-sm font-bold text-gray-900">{pkg.total_kg.toFixed(1)} kg</div>
           <div className="text-xs text-gray-500">
-            {parseFloat(pkg.quantity).toFixed(1)} {pkg.item_unit}
+            {pkg.quantity} unidades
           </div>
         </div>
       </div>
