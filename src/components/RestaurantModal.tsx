@@ -462,7 +462,6 @@ const AddressFields = ({
     <div className="grid grid-cols-2 gap-4">
       <InputField
         label="Rua"
-        readOnly
         bg="bg-gray-50 text-gray-600"
         {...register('street')}
       />
